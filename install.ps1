@@ -16,6 +16,11 @@
     automation/CI. Without this switch, a missing uv triggers an
     interactive (y/N) prompt instead.
 
+.PARAMETER ForceHooksPath
+    Overwrite an existing git core.hooksPath (or a pre-existing
+    .git/hooks/pre-commit) even if it isn't managed by Second Brain.
+    Without this switch, install.ps1 warns and leaves it untouched.
+
 .EXAMPLE
     .\install.ps1
     .\install.ps1 ..\MyProject
@@ -25,7 +30,8 @@
 param(
     [Parameter(Position = 0)]
     [string]$TargetPath = ".",
-    [switch]$InstallUv
+    [switch]$InstallUv,
+    [switch]$ForceHooksPath
 )
 
 $ErrorActionPreference = "Stop"
@@ -234,14 +240,43 @@ else {
     Write-Host "[MERGED] Second Brain block appended to existing CLAUDE.md" -ForegroundColor Green
 }
 
-# 6. Hook up the git hook (only if the destination is a Git repository)
+# 6. Hook up the git hook (only if the destination is a Git repository).
+#    Never silently overwrite a hooksPath/hook that isn't ours.
 Write-Host ""
 $gitDir = Join-Path $destination ".git"
+$desiredHooksPath = ".claude/hooks"
+
 if (Test-Path $gitDir) {
     Push-Location $destination
     try {
-        git config core.hooksPath .claude/hooks
-        Write-Host "[GIT] core.hooksPath set to .claude/hooks" -ForegroundColor Green
+        $currentHooksPath = (git config --get core.hooksPath 2>$null)
+        $legacyHookFile = Join-Path $destination ".git\hooks\pre-commit"
+        $hasLegacyHook = (Test-Path $legacyHookFile) -and
+            -not ((Get-Content $legacyHookFile -Raw) -match "SECOND BRAIN SYSTEM")
+
+        if ([string]::IsNullOrWhiteSpace($currentHooksPath)) {
+            if ($hasLegacyHook -and -not $ForceHooksPath) {
+                Write-Host "[GIT] Found an existing .git/hooks/pre-commit not managed by Second Brain." -ForegroundColor Yellow
+                Write-Host "      Setting core.hooksPath would make Git ignore it. Merge it manually," -ForegroundColor Yellow
+                Write-Host "      or re-run with -ForceHooksPath to proceed anyway." -ForegroundColor Yellow
+            }
+            else {
+                git config core.hooksPath $desiredHooksPath
+                Write-Host "[GIT] core.hooksPath set to $desiredHooksPath" -ForegroundColor Green
+            }
+        }
+        elseif ($currentHooksPath -eq $desiredHooksPath) {
+            Write-Host "[GIT] core.hooksPath already set to $desiredHooksPath" -ForegroundColor Green
+        }
+        elseif ($ForceHooksPath) {
+            git config core.hooksPath $desiredHooksPath
+            Write-Host "[GIT] Overwritten core.hooksPath -> $desiredHooksPath (-ForceHooksPath)" -ForegroundColor Green
+        }
+        else {
+            Write-Host "[GIT] core.hooksPath is already set to '$currentHooksPath' (not Second Brain's)." -ForegroundColor Yellow
+            Write-Host "      Leaving it untouched to avoid breaking husky/pre-commit-framework/etc." -ForegroundColor Yellow
+            Write-Host "      Re-run with -ForceHooksPath to overwrite, or merge manually." -ForegroundColor Yellow
+        }
     }
     finally {
         Pop-Location

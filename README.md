@@ -65,9 +65,12 @@ The script:
    doesn't exist, appends the block if the file exists without touching
    the user's existing content, or updates the block in place if it's
    already present (idempotent re-run);
-6. if the destination is a Git repository, runs
-   `git config core.hooksPath .claude/hooks` to hook up the pre-commit
-   hook.
+6. if the destination is a Git repository, sets `core.hooksPath` to
+   `.claude/hooks` to hook up the pre-commit hook — unless
+   `core.hooksPath` is already set to something else, or a
+   non-Second-Brain hook already exists at `.git/hooks/pre-commit`, in
+   which case it warns and leaves things untouched (pass `-ForceHooksPath`
+   to overwrite anyway).
 
 ## Requirements
 
@@ -93,3 +96,8 @@ a private branch you'll squash later, or for a doc-only commit you're
 about to make immediately after — don't touch `docs/` just to satisfy the
 hook ("doc-touch"); see
 `.claude/skills/update-second-brain/SKILL.md` for the full policy.
+
+If a destination project is ever copied to macOS/Linux, the hook scripts
+are provided without the POSIX executable bit; run
+`chmod +x .claude/hooks/pre-commit` yourself first (this template targets
+Windows/Git for Windows, so `install.ps1` doesn't do this for you).
