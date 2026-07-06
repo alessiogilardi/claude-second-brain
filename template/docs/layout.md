@@ -1,25 +1,25 @@
-# Layout del progetto
+# Project Layout
 
-> Placeholder — da compilare durante l'onboarding del progetto reale.
+> Placeholder — to be filled in during onboarding of the real project.
 
-## Struttura delle cartelle
+## Folder structure
 
-Descrivi la struttura reale del repository e la responsabilita' di ogni
-cartella di primo livello (es. `src/`, `tests/`, `scripts/`, `docs/`).
+Describe the actual repository structure and the responsibility of each
+top-level folder (e.g. `src/`, `tests/`, `scripts/`, `docs/`).
 
 ```text
 repo/
-├── src/            # descrizione
-├── tests/          # descrizione
-└── docs/           # questa documentazione
+├── src/            # description
+├── tests/          # description
+└── docs/           # this documentation
 ```
 
-## Convenzioni di posizionamento
+## Placement conventions
 
-Spiega dove va aggiunto codice nuovo a seconda del tipo (es. "un nuovo
-endpoint va in X", "una nuova entita' di dominio va in Y").
+Explain where new code should go depending on its type (e.g. "a new
+endpoint goes in X", "a new domain entity goes in Y").
 
 ---
-*Istruzioni per Claude: mantieni questo file coerente con la struttura reale
-delle cartelle; aggiornalo quando si aggiungono o riorganizzano package/moduli
-di primo livello.*
+*Instructions for Claude: keep this file consistent with the actual folder
+structure; update it when top-level packages/modules are added or
+reorganized.*

@@ -1,18 +1,18 @@
 <#
 .SYNOPSIS
-    Inietta il sistema di documentazione "Second Brain" in un progetto di destinazione.
+    Injects the "Second Brain" documentation system into a destination project.
 
 .DESCRIPTION
-    Copia la struttura docs/ e .claude/ dal template verso la cartella di
-    destinazione (default: cartella corrente), senza sovrascrivere file
-    dell'utente gia' esistenti, e aggancia il git hook di pre-commit.
+    Copies the docs/ and .claude/ structure from the template into the
+    destination folder (default: current folder), without overwriting
+    existing user files, and hooks up the pre-commit git hook.
 
 .PARAMETER TargetPath
-    Cartella del progetto di destinazione. Default: "." (cartella corrente).
+    Destination project folder. Default: "." (current folder).
 
 .EXAMPLE
     .\init.ps1
-    .\init.ps1 ..\MioProgetto
+    .\init.ps1 ..\MyProject
 #>
 
 [CmdletBinding()]
@@ -51,15 +51,15 @@ function Merge-SecondBrainBlock {
     $endIndex = $ExistingContent.IndexOf($secondBrainEndMarker)
 
     if ($beginIndex -ge 0 -and $endIndex -ge 0) {
-        # Blocco gia' presente (re-run di init.ps1): lo sostituisce sul posto,
-        # lasciando intatto il resto del file scritto dall'utente.
+        # Block already present (init.ps1 re-run): replace it in place,
+        # leaving the rest of the user-written file untouched.
         $endIndex += $secondBrainEndMarker.Length
         $before = $ExistingContent.Substring(0, $beginIndex)
         $after = $ExistingContent.Substring($endIndex)
         return $before + $Block + $after
     }
 
-    # Nessun blocco presente: lo aggiunge in coda senza toccare il contenuto esistente.
+    # No block present: append it at the end without touching existing content.
     return $ExistingContent.TrimEnd() + "`n`n" + $Block + "`n"
 }
 
@@ -79,7 +79,7 @@ function Copy-WithoutOverwrite {
         }
 
         if (Test-Path $destFile) {
-            Write-Host "  [SKIP] $relativePath (esiste gia')" -ForegroundColor Yellow
+            Write-Host "  [SKIP] $relativePath (already exists)" -ForegroundColor Yellow
         }
         else {
             Copy-Item -Path $_.FullName -Destination $destFile
@@ -88,11 +88,11 @@ function Copy-WithoutOverwrite {
     }
 }
 
-Write-Host "=== Second Brain - Inizializzazione ===" -ForegroundColor Cyan
-Write-Host "Destinazione: $destination"
+Write-Host "=== Second Brain - Initialization ===" -ForegroundColor Cyan
+Write-Host "Destination: $destination"
 Write-Host ""
 
-# 1. Crea le cartelle richieste nel progetto di destinazione
+# 1. Create the required folders in the destination project
 $foldersToCreate = @(
     (Join-Path $destination ".claude\hooks"),
     (Join-Path $destination ".claude\skills\update-second-brain"),
@@ -102,21 +102,21 @@ $foldersToCreate = @(
 foreach ($folder in $foldersToCreate) {
     if (-not (Test-Path $folder)) {
         New-Item -ItemType Directory -Path $folder -Force | Out-Null
-        Write-Host "[CREATA] $folder"
+        Write-Host "[CREATED] $folder"
     }
 }
 
-# 2. Copia ricorsiva di docs/ e .claude/ senza sovrascrivere file esistenti
+# 2. Recursively copy docs/ and .claude/ without overwriting existing files
 Write-Host ""
-Write-Host "Copio template/docs/ ..." -ForegroundColor Cyan
+Write-Host "Copying template/docs/ ..." -ForegroundColor Cyan
 Copy-WithoutOverwrite -Source $templateDocs -Destination (Join-Path $destination "docs")
 
 Write-Host ""
-Write-Host "Copio template/.claude/ ..." -ForegroundColor Cyan
+Write-Host "Copying template/.claude/ ..." -ForegroundColor Cyan
 Copy-WithoutOverwrite -Source $templateClaude -Destination (Join-Path $destination ".claude")
 
-# 3. Integrazione del blocco Second Brain in CLAUDE.md, senza sostituire
-#    contenuto che l'utente ha gia' scritto nel file.
+# 3. Merge the Second Brain block into CLAUDE.md, without replacing
+#    content the user has already written.
 $destClaudeMd = Join-Path $destination "CLAUDE.md"
 Write-Host ""
 
@@ -128,31 +128,31 @@ $mergedClaudeMd = Merge-SecondBrainBlock -ExistingContent $existingClaudeMd -Blo
 Set-Content -Path $destClaudeMd -Value $mergedClaudeMd -NoNewline
 
 if ([string]::IsNullOrWhiteSpace($existingClaudeMd)) {
-    Write-Host "[CREATO] CLAUDE.md" -ForegroundColor Green
+    Write-Host "[CREATED] CLAUDE.md" -ForegroundColor Green
 }
 elseif ($alreadyMerged) {
-    Write-Host "[AGGIORNATO] Blocco Second Brain in CLAUDE.md (gia' presente, sostituito)" -ForegroundColor Green
+    Write-Host "[UPDATED] Second Brain block in CLAUDE.md (already present, replaced)" -ForegroundColor Green
 }
 else {
-    Write-Host "[INTEGRATO] Blocco Second Brain aggiunto in coda a CLAUDE.md esistente" -ForegroundColor Green
+    Write-Host "[MERGED] Second Brain block appended to existing CLAUDE.md" -ForegroundColor Green
 }
 
-# 4. Aggancio del git hook (solo se la destinazione e' una repository Git)
+# 4. Hook up the git hook (only if the destination is a Git repository)
 Write-Host ""
 $gitDir = Join-Path $destination ".git"
 if (Test-Path $gitDir) {
     Push-Location $destination
     try {
         git config core.hooksPath .claude/hooks
-        Write-Host "[GIT] core.hooksPath impostato su .claude/hooks" -ForegroundColor Green
+        Write-Host "[GIT] core.hooksPath set to .claude/hooks" -ForegroundColor Green
     }
     finally {
         Pop-Location
     }
 }
 else {
-    Write-Host "[GIT] Nessuna repository Git trovata in $destination, salto la configurazione degli hook." -ForegroundColor Yellow
+    Write-Host "[GIT] No Git repository found in $destination, skipping hook setup." -ForegroundColor Yellow
 }
 
 Write-Host ""
-Write-Host "=== Second Brain configurato con successo in: $destination ===" -ForegroundColor Cyan
+Write-Host "=== Second Brain successfully set up in: $destination ===" -ForegroundColor Cyan

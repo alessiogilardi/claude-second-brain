@@ -1,32 +1,31 @@
-# Second Brain — Mappa di navigazione
+# Second Brain — Navigation Map
 
-Questa cartella e' il "second brain" del progetto: la fonte di verita' sullo
-stato reale di architettura, dati, pattern e testing. E' pensata per essere
-letta e aggiornata da agenti AI (Claude Code) oltre che da sviluppatori umani.
+This folder is the project's "second brain": the source of truth about the
+actual state of architecture, data, patterns, and testing. It's meant to be
+read and updated by AI agents (Claude Code) as well as human developers.
 
-## Come orientarsi
+## How to find your way around
 
-| File | Quando leggerlo |
+| File | When to read it |
 |---|---|
-| [`architecture.md`](./architecture.md) | Per capire i componenti principali del sistema e come comunicano tra loro. |
-| [`database.md`](./database.md) | Prima di modificare schema, tabelle, migrazioni o relazioni. |
-| [`patterns.md`](./patterns.md) | Prima di scrivere codice nuovo, per riusare le convenzioni gia' adottate. |
-| [`glossary.md`](./glossary.md) | Quando incontri un termine di dominio non familiare. |
-| [`layout.md`](./layout.md) | Per orientarsi nella struttura delle cartelle e capire dove va aggiunto codice nuovo. |
-| [`testing.md`](./testing.md) | Prima di scrivere o modificare test. |
-| [`adr/`](./adr/) | Per lo storico delle decisioni architetturali e il loro contesto/motivazione. |
+| [`architecture.md`](./architecture.md) | To understand the system's main components and how they talk to each other. |
+| [`database.md`](./database.md) | Before changing schema, tables, migrations, or relationships. |
+| [`patterns.md`](./patterns.md) | Before writing new code, to reuse conventions already adopted. |
+| [`glossary.md`](./glossary.md) | When you run into an unfamiliar domain term. |
+| [`layout.md`](./layout.md) | To find your way around the folder structure and know where new code belongs. |
+| [`testing.md`](./testing.md) | Before writing or changing tests. |
+| [`adr/`](./adr/) | For the history of architectural decisions and their context/motivation. |
 
-## Come mantenerla aggiornata
+## How to keep it up to date
 
-Questa documentazione non e' statica: va aggiornata ad ogni cambiamento
-rilevante tramite la skill `.claude/skills/update-second-brain`. Un git hook
-(`.claude/hooks/pre-commit`) impedisce commit di codice sorgente che non
-tocchino anche questa cartella o `CLAUDE.md`, proprio per evitare che la
-documentazione si disallinei dal codice reale.
+This documentation isn't static: it must be updated on every relevant
+change via the `.claude/skills/update-second-brain` skill. A git hook
+(`.claude/hooks/pre-commit`) blocks source-code commits that don't also
+touch this folder or `CLAUDE.md`, precisely to prevent the documentation
+from drifting away from the real code.
 
-## Regola per gli agenti AI
+## Rule for AI agents
 
-Prima di iniziare un task non banale, leggi almeno `architecture.md` e
-`layout.md`. Prima di modificare il database, leggi `database.md`. Prima di
-concludere una sessione di lavoro, esegui la checklist della skill
-`update-second-brain`.
+Before starting a non-trivial task, read at least `architecture.md` and
+`layout.md`. Before changing the database, read `database.md`. Before
+ending a work session, run the `update-second-brain` skill checklist.

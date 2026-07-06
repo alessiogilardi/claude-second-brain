@@ -1,30 +1,30 @@
-# Architettura
+# Architecture
 
-> Placeholder — da compilare durante l'onboarding del progetto reale.
+> Placeholder — to be filled in during onboarding of the real project.
 
-## Visione d'insieme
+## Overview
 
-Descrivi qui in poche righe cosa fa il sistema e quali sono i suoi confini
-principali (es. servizio web, pipeline batch, libreria, monorepo con piu'
-applicazioni).
+Describe here in a few lines what the system does and what its main
+boundaries are (e.g. web service, batch pipeline, library, monorepo with
+multiple applications).
 
-## Componenti principali
+## Main components
 
-Elenca i componenti/moduli principali e la loro responsabilita' (es. API,
-worker, frontend, servizi esterni integrati). Per ciascuno: nome, ruolo,
-tecnologia principale.
+List the main components/modules and their responsibility (e.g. API,
+worker, frontend, integrated external services). For each: name, role,
+main technology.
 
-## Flussi principali
+## Main flows
 
-Descrivi (anche solo a parole o con un piccolo diagramma testuale) i 2-3
-flussi end-to-end piu' importanti del sistema.
+Describe (even just in words, or with a small text diagram) the 2-3 most
+important end-to-end flows of the system.
 
-## Decisioni architetturali rilevanti
+## Relevant architectural decisions
 
-Rimanda alle voci puntuali in [`adr/`](./adr/) per il dettaglio; qui riassumi
-solo le decisioni che un nuovo arrivato (umano o AI) deve conoscere subito.
+Refer to the individual entries in [`adr/`](./adr/) for details; here just
+summarize the decisions a newcomer (human or AI) needs to know right away.
 
 ---
-*Istruzioni per Claude: quando questo file viene compilato per un progetto
-reale, sostituisci ogni sezione con contenuto concreto e specifico. Non
-lasciare placeholder generici una volta che l'architettura reale e' nota.*
+*Instructions for Claude: when this file is filled in for a real project,
+replace every section with concrete, specific content. Don't leave generic
+placeholders once the real architecture is known.*

@@ -1,16 +1,16 @@
-# Glossario
+# Glossary
 
-> Placeholder — da compilare durante l'onboarding del progetto reale.
+> Placeholder — to be filled in during onboarding of the real project.
 
-Elenca qui i termini di dominio specifici del progetto (non generici) che un
-nuovo agente AI o sviluppatore deve conoscere per capire codice, commit
-message e discussioni sul progetto.
+List here the domain-specific terms of the project (not generic ones) that
+a new AI agent or developer needs to know to understand code, commit
+messages, and discussions about the project.
 
-| Termine | Significato |
+| Term | Meaning |
 |---|---|
-| _Esempio_ | _Definizione breve e specifica al dominio del progetto._ |
+| _Example_ | _Short, domain-specific definition._ |
 
 ---
-*Istruzioni per Claude: aggiungi una voce ogni volta che introduci o incontri
-un termine di dominio non ovvio dal solo nome (acronimi interni, nomi di
-entita' di business, concetti specifici del settore).*
+*Instructions for Claude: add an entry every time you introduce or come
+across a non-obvious domain term (internal acronyms, business entity names,
+concepts specific to the domain).*

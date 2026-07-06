@@ -1,26 +1,26 @@
-# ADR NNNN: Titolo della decisione
+# ADR NNNN: Decision title
 
-## Stato
+## Status
 
-Proposta | Accettata | Deprecata | Sostituita da ADR NNNN
+Proposed | Accepted | Deprecated | Superseded by ADR NNNN
 
-## Contesto
+## Context
 
-Qual e' il problema o la forza in gioco che rende necessaria questa
-decisione? Descrivi la situazione tecnica e di business che porta a
-valutare delle alternative.
+What is the problem or the forces at play that make this decision
+necessary? Describe the technical and business situation that leads to
+evaluating alternatives.
 
-## Decisione
+## Decision
 
-Qual e' la decisione presa? Descrivila in modo diretto e verificabile.
+What decision was made? Describe it directly and in a verifiable way.
 
-## Alternative considerate
+## Alternatives considered
 
-- **Alternativa A**: descrizione e motivo per cui non e' stata scelta.
-- **Alternativa B**: descrizione e motivo per cui non e' stata scelta.
+- **Alternative A**: description and reason it wasn't chosen.
+- **Alternative B**: description and reason it wasn't chosen.
 
-## Conseguenze
+## Consequences
 
-Quali sono gli effetti positivi e negativi di questa decisione? Cosa diventa
-piu' facile, cosa diventa piu' difficile, quale debito tecnico viene accettato
-consapevolmente.
+What are the positive and negative effects of this decision? What becomes
+easier, what becomes harder, what technical debt is being knowingly
+accepted.

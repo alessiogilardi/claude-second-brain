@@ -1,31 +1,31 @@
 # Database
 
-> Placeholder — da compilare durante l'onboarding del progetto reale.
+> Placeholder — to be filled in during onboarding of the real project.
 
-## Motore e connessione
+## Engine and connection
 
-Indica il DBMS usato (es. PostgreSQL, SQLite, MongoDB) e dove si trova la
-configurazione di connessione (senza includere credenziali).
+State the DBMS used (e.g. PostgreSQL, SQLite, MongoDB) and where the
+connection configuration lives (without including credentials).
 
-## Schema principale
+## Main schema
 
-Elenca le tabelle/collezioni principali, i loro campi chiave e le relazioni
-tra loro. Per schemi complessi, preferisci un elenco strutturato tabella per
-tabella piuttosto che un unico diagramma monolitico.
+List the main tables/collections, their key fields, and the relationships
+between them. For complex schemas, prefer a structured table-by-table list
+over a single monolithic diagram.
 
 ```text
-tabella_esempio
+example_table
 ├── id (PK)
-├── campo_x
-└── fk_altra_tabella (FK -> altra_tabella.id)
+├── field_x
+└── fk_other_table (FK -> other_table.id)
 ```
 
-## Migrazioni
+## Migrations
 
-Indica lo strumento di migrazione usato e la convenzione di naming/versioning
-adottata.
+State the migration tool used and the naming/versioning convention
+adopted.
 
 ---
-*Istruzioni per Claude: aggiorna questo file ogni volta che cambiano tabelle,
-colonne, indici, vincoli o relazioni. Non lasciare lo schema documentato
-disallineato da quello reale.*
+*Instructions for Claude: update this file whenever tables, columns,
+indexes, constraints, or relationships change. Don't leave the documented
+schema out of sync with the real one.*

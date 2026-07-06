@@ -1,22 +1,23 @@
-# Pattern e convenzioni
+# Patterns and Conventions
 
-> Placeholder — da compilare durante l'onboarding del progetto reale.
+> Placeholder — to be filled in during onboarding of the real project.
 
-Elenca qui i pattern di design e le convenzioni ricorrenti effettivamente
-adottate nel codice (non pattern teorici generici), cosi' che il codice
-nuovo li riusi invece di reinventarli.
+List here the design patterns and recurring conventions actually adopted
+in the code (not generic theoretical patterns), so that new code reuses
+them instead of reinventing them.
 
-## Pattern adottati
+## Adopted patterns
 
-| Pattern | Dove viene usato | Perche' |
+| Pattern | Where it's used | Why |
 |---|---|---|
-| _Esempio: Repository_ | _es. accesso ai dati_ | _motivazione specifica al progetto_ |
+| _Example: Repository_ | _e.g. data access_ | _project-specific rationale_ |
 
-## Convenzioni di naming
+## Naming conventions
 
-Documenta eventuali convenzioni di naming specifiche del progetto (per
-classi, file, branch, commit).
+Document any project-specific naming conventions (for classes, files,
+branches, commits).
 
 ---
-*Istruzioni per Claude: aggiungi una voce ogni volta che introduci un pattern
-nuovo o ricorrente nel codice, con un esempio concreto di dove e' applicato.*
+*Instructions for Claude: add an entry every time you introduce a new or
+recurring pattern in the code, with a concrete example of where it's
+applied.*

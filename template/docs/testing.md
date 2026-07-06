@@ -1,20 +1,20 @@
 # Testing
 
-> Placeholder — da compilare durante l'onboarding del progetto reale.
+> Placeholder — to be filled in during onboarding of the real project.
 
-## Strategia
+## Strategy
 
-Descrivi il tipo di test adottati nel progetto (unitari, integrazione,
-end-to-end) e il rapporto atteso tra questi livelli.
+Describe the types of tests adopted in the project (unit, integration,
+end-to-end) and the expected ratio between these levels.
 
-## Strumenti
+## Tools
 
-Indica framework di test, comando per eseguirli e strumenti di coverage.
+State the test framework, the command to run tests, and coverage tools.
 
-## Convenzioni
+## Conventions
 
-Indica dove vivono i test rispetto al codice sorgente e come sono nominati.
+State where tests live relative to the source code and how they're named.
 
 ---
-*Istruzioni per Claude: aggiorna questo file quando cambiano framework, tipi
-di test introdotti, policy di coverage o organizzazione dei test.*
+*Instructions for Claude: update this file when the framework, the types
+of tests introduced, coverage policy, or test organization change.*

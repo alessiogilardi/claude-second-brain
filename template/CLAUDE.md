@@ -1,31 +1,30 @@
-<!-- BEGIN SECOND BRAIN SYSTEM (gestito da claude-second-brain-skill: non modificare a mano questo blocco, modifica template/CLAUDE.md e rilancia init.ps1) -->
+<!-- BEGIN SECOND BRAIN SYSTEM (managed by claude-second-brain-skill: do not edit this block by hand, edit template/CLAUDE.md and rerun init.ps1) -->
 # Second Brain
 
-Questo progetto usa il sistema di documentazione "Second Brain": una serie di
-file in `docs/` che descrivono lo stato reale di architettura, database,
-pattern e testing, pensati per essere letti e mantenuti da agenti AI.
+This project uses the "Second Brain" documentation system: a set of files
+in `docs/` describing the actual state of architecture, database, patterns,
+and testing, meant to be read and maintained by AI agents.
 
-## Mappa della documentazione
+## Documentation map
 
-Consulta sempre `docs/README.md` come punto di ingresso. In sintesi:
+Always check `docs/README.md` as the entry point. In short:
 
-- `docs/architecture.md` — visione d'insieme dell'architettura
-- `docs/database.md` — schema del database e relazioni
-- `docs/patterns.md` — pattern di design e convenzioni ricorrenti nel codice
-- `docs/glossary.md` — glossario dei termini di dominio
-- `docs/layout.md` — struttura delle cartelle e responsabilita' dei moduli
-- `docs/testing.md` — strategia e strumenti di testing
-- `docs/adr/` — Architecture Decision Records (una decisione per file)
+- `docs/architecture.md` — architecture overview
+- `docs/database.md` — database schema and relationships
+- `docs/patterns.md` — design patterns and recurring conventions in the code
+- `docs/glossary.md` — domain terms glossary
+- `docs/layout.md` — folder structure and module responsibilities
+- `docs/testing.md` — testing strategy and tools
+- `docs/adr/` — Architecture Decision Records (one decision per file)
 
-## Regola operativa
+## Operating rule
 
-Ogni commit che modifica codice sorgente deve accompagnarsi a un
-aggiornamento coerente in `docs/` o in questo file: un git hook in
-`.claude/hooks/pre-commit` lo verifica automaticamente e rifiuta il commit
-in caso contrario.
+Every commit that changes source code must come with a matching update in
+`docs/` or in this file: a git hook in `.claude/hooks/pre-commit`
+automatically checks this and rejects the commit otherwise.
 
-Quando modifichi schema DB, fai refactoring strutturale, prendi una nuova
-decisione architetturale, introduci un nuovo pattern, o cambi strategia di
-testing, esegui la skill `.claude/skills/update-second-brain` per allineare
-la documentazione prima di chiudere la sessione.
+When you change the DB schema, do a structural refactor, make a new
+architectural decision, introduce a new pattern, or change the testing
+strategy, run the `.claude/skills/update-second-brain` skill to align the
+documentation before closing the session.
 <!-- END SECOND BRAIN SYSTEM -->

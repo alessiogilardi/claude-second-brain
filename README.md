@@ -1,21 +1,21 @@
 # claude-second-brain-skill
 
-Repository template per esportare il sistema di documentazione **"Second
-Brain"** su altri progetti: una struttura `docs/` mantenuta sincronizzata col
-codice tramite una skill di Claude Code e un git hook di pre-commit.
+Template repository for exporting the **"Second Brain"** documentation
+system to other projects: a `docs/` structure kept in sync with the code
+via a Claude Code skill and a pre-commit git hook.
 
-## Cosa contiene
+## What's in here
 
 ```text
 claude-second-brain-skill/
 ├── template/
-│   ├── CLAUDE.md                          # blocco integrato nel CLAUDE.md della destinazione
+│   ├── CLAUDE.md                          # block merged into the destination's CLAUDE.md
 │   ├── .claude/
 │   │   ├── hooks/
-│   │   │   └── pre-commit                 # blocca commit di codice senza aggiornamento docs
+│   │   │   └── pre-commit                 # blocks code commits without a docs update
 │   │   └── skills/
 │   │       └── update-second-brain/
-│   │           └── SKILL.md               # skill che aggiorna la documentazione
+│   │           └── SKILL.md               # skill that updates the documentation
 │   └── docs/
 │       ├── adr/
 │       │   └── template.md
@@ -26,40 +26,40 @@ claude-second-brain-skill/
 │       ├── layout.md
 │       ├── patterns.md
 │       └── testing.md
-├── init.ps1                               # script di iniezione nel progetto destinazione
+├── init.ps1                               # injection script for the destination project
 └── README.md
 ```
 
-## Come usarlo
+## How to use it
 
-Da questa repository, lancia `init.ps1` puntando alla cartella del progetto
-in cui vuoi installare il second brain:
+From this repository, run `init.ps1` pointing at the folder of the project
+where you want to install the second brain:
 
 ```powershell
-# Installa nel progetto corrente (default)
+# Install into the current folder (default)
 .\init.ps1
 
-# Installa in un altro progetto
-.\init.ps1 ..\MioProgetto
+# Install into another project
+.\init.ps1 ..\MyProject
 ```
 
-Lo script:
+The script:
 
-1. crea `.claude/hooks/`, `.claude/skills/update-second-brain/` e `docs/adr/`
-   nel progetto di destinazione;
-2. copia il contenuto di `template/docs/` e `template/.claude/` senza
-   sovrascrivere file gia' presenti nel progetto destinazione;
-3. integra un blocco delimitato da marker (`<!-- BEGIN/END SECOND BRAIN
-   SYSTEM -->`) nel `CLAUDE.md` della destinazione: se il file non esiste lo
-   crea, se esiste lo aggiunge in coda senza toccare il contenuto scritto
-   dall'utente, se il blocco e' gia' presente (re-run dello script) lo
-   aggiorna sul posto in modo idempotente;
-4. se la destinazione e' una repository Git, esegue
-   `git config core.hooksPath .claude/hooks` per agganciare il pre-commit
+1. creates `.claude/hooks/`, `.claude/skills/update-second-brain/` and
+   `docs/adr/` in the destination project;
+2. copies the contents of `template/docs/` and `template/.claude/` without
+   overwriting files that already exist in the destination project;
+3. merges a marker-delimited block (`<!-- BEGIN/END SECOND BRAIN
+   SYSTEM -->`) into the destination's `CLAUDE.md`: creates the file if it
+   doesn't exist, appends the block if the file exists without touching
+   the user's existing content, or updates the block in place if it's
+   already present (idempotent re-run);
+4. if the destination is a Git repository, runs
+   `git config core.hooksPath .claude/hooks` to hook up the pre-commit
    hook.
 
-## Requisiti
+## Requirements
 
-- Windows con Git per Windows (gli hook girano tramite l'ambiente Bash/MSYS
-  incluso in Git per Windows).
-- PowerShell 5.1+ o PowerShell 7+.
+- Windows with Git for Windows (hooks run through the Bash/MSYS environment
+  bundled with Git for Windows).
+- PowerShell 5.1+ or PowerShell 7+.
