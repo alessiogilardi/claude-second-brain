@@ -9,7 +9,7 @@ codice tramite una skill di Claude Code e un git hook di pre-commit.
 ```text
 claude-second-brain-skill/
 ├── template/
-│   ├── CLAUDE.md                          # copiato nella root del progetto destinazione
+│   ├── CLAUDE.md                          # blocco integrato nel CLAUDE.md della destinazione
 │   ├── .claude/
 │   │   ├── hooks/
 │   │   │   └── pre-commit                 # blocca commit di codice senza aggiornamento docs
@@ -49,8 +49,11 @@ Lo script:
    nel progetto di destinazione;
 2. copia il contenuto di `template/docs/` e `template/.claude/` senza
    sovrascrivere file gia' presenti nel progetto destinazione;
-3. se esiste gia' un `CLAUDE.md` nella destinazione, lo rinomina in
-   `CLAUDE.md.bak` prima di installare quello del template;
+3. integra un blocco delimitato da marker (`<!-- BEGIN/END SECOND BRAIN
+   SYSTEM -->`) nel `CLAUDE.md` della destinazione: se il file non esiste lo
+   crea, se esiste lo aggiunge in coda senza toccare il contenuto scritto
+   dall'utente, se il blocco e' gia' presente (re-run dello script) lo
+   aggiorna sul posto in modo idempotente;
 4. se la destinazione e' una repository Git, esegue
    `git config core.hooksPath .claude/hooks` per agganciare il pre-commit
    hook.

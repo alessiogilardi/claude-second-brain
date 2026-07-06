@@ -1,4 +1,5 @@
-# Progetto — Second Brain
+<!-- BEGIN SECOND BRAIN SYSTEM (gestito da claude-second-brain-skill: non modificare a mano questo blocco, modifica template/CLAUDE.md e rilancia init.ps1) -->
+# Second Brain
 
 Questo progetto usa il sistema di documentazione "Second Brain": una serie di
 file in `docs/` che descrivono lo stato reale di architettura, database,
@@ -27,3 +28,4 @@ Quando modifichi schema DB, fai refactoring strutturale, prendi una nuova
 decisione architetturale, introduci un nuovo pattern, o cambi strategia di
 testing, esegui la skill `.claude/skills/update-second-brain` per allineare
 la documentazione prima di chiudere la sessione.
+<!-- END SECOND BRAIN SYSTEM -->

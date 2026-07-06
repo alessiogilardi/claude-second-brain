@@ -34,6 +34,35 @@ if (-not (Test-Path $TargetPath)) {
 }
 $destination = (Resolve-Path -Path $TargetPath).Path
 
+$secondBrainBeginMarker = "<!-- BEGIN SECOND BRAIN SYSTEM"
+$secondBrainEndMarker = "<!-- END SECOND BRAIN SYSTEM -->"
+
+function Merge-SecondBrainBlock {
+    param(
+        [string]$ExistingContent,
+        [string]$Block
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ExistingContent)) {
+        return $Block
+    }
+
+    $beginIndex = $ExistingContent.IndexOf($secondBrainBeginMarker)
+    $endIndex = $ExistingContent.IndexOf($secondBrainEndMarker)
+
+    if ($beginIndex -ge 0 -and $endIndex -ge 0) {
+        # Blocco gia' presente (re-run di init.ps1): lo sostituisce sul posto,
+        # lasciando intatto il resto del file scritto dall'utente.
+        $endIndex += $secondBrainEndMarker.Length
+        $before = $ExistingContent.Substring(0, $beginIndex)
+        $after = $ExistingContent.Substring($endIndex)
+        return $before + $Block + $after
+    }
+
+    # Nessun blocco presente: lo aggiunge in coda senza toccare il contenuto esistente.
+    return $ExistingContent.TrimEnd() + "`n`n" + $Block + "`n"
+}
+
 function Copy-WithoutOverwrite {
     param(
         [string]$Source,
@@ -86,15 +115,27 @@ Write-Host ""
 Write-Host "Copio template/.claude/ ..." -ForegroundColor Cyan
 Copy-WithoutOverwrite -Source $templateClaude -Destination (Join-Path $destination ".claude")
 
-# 3. Backup dell'eventuale CLAUDE.md esistente, poi installazione di quello del template
+# 3. Integrazione del blocco Second Brain in CLAUDE.md, senza sostituire
+#    contenuto che l'utente ha gia' scritto nel file.
 $destClaudeMd = Join-Path $destination "CLAUDE.md"
 Write-Host ""
-if (Test-Path $destClaudeMd) {
-    Rename-Item -Path $destClaudeMd -NewName "CLAUDE.md.bak" -Force
-    Write-Host "[BACKUP] CLAUDE.md esistente rinominato in CLAUDE.md.bak" -ForegroundColor Yellow
+
+$templateBlock = Get-Content -Path $templateClaudeMd -Raw
+$existingClaudeMd = if (Test-Path $destClaudeMd) { Get-Content -Path $destClaudeMd -Raw } else { "" }
+$alreadyMerged = $existingClaudeMd.Contains($secondBrainBeginMarker)
+
+$mergedClaudeMd = Merge-SecondBrainBlock -ExistingContent $existingClaudeMd -Block $templateBlock
+Set-Content -Path $destClaudeMd -Value $mergedClaudeMd -NoNewline
+
+if ([string]::IsNullOrWhiteSpace($existingClaudeMd)) {
+    Write-Host "[CREATO] CLAUDE.md" -ForegroundColor Green
 }
-Copy-Item -Path $templateClaudeMd -Destination $destClaudeMd
-Write-Host "[COPY] CLAUDE.md" -ForegroundColor Green
+elseif ($alreadyMerged) {
+    Write-Host "[AGGIORNATO] Blocco Second Brain in CLAUDE.md (gia' presente, sostituito)" -ForegroundColor Green
+}
+else {
+    Write-Host "[INTEGRATO] Blocco Second Brain aggiunto in coda a CLAUDE.md esistente" -ForegroundColor Green
+}
 
 # 4. Aggancio del git hook (solo se la destinazione e' una repository Git)
 Write-Host ""
