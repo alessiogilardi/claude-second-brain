@@ -11,8 +11,10 @@ claude-second-brain-skill/
 ├── template/
 │   ├── CLAUDE.md                          # block merged into the destination's CLAUDE.md
 │   ├── .claude/
+│   │   ├── settings.json                  # wires the Stop-hook end-of-session reminder
 │   │   ├── hooks/
-│   │   │   └── pre-commit                 # blocks code commits without a docs update
+│   │   │   ├── pre-commit                 # blocks code commits without a docs update
+│   │   │   └── session_reminder.py        # non-blocking end-of-session reminder (uv run)
 │   │   └── skills/
 │   │       └── update-second-brain/
 │   │           └── SKILL.md               # skill that updates the documentation
@@ -26,6 +28,8 @@ claude-second-brain-skill/
 │       ├── layout.md
 │       ├── patterns.md
 │       └── testing.md
+├── scripts/
+│   └── merge_settings.py                   # used only by install.ps1, not copied to destination
 ├── install.ps1                             # injection script for the destination project
 └── README.md
 ```
@@ -47,14 +51,21 @@ The script:
 
 1. creates `.claude/hooks/`, `.claude/skills/update-second-brain/` and
    `docs/adr/` in the destination project;
-2. copies the contents of `template/docs/` and `template/.claude/` without
+2. checks whether `uv` is on `PATH`; if not, offers to install it via the
+   official installer (interactively, or automatically with `-InstallUv`)
+   — `uv` runs the end-of-session reminder hook and the `settings.json`
+   merge below, so both are skipped (with a warning) if it stays missing;
+3. copies the contents of `template/docs/` and `template/.claude/` without
    overwriting files that already exist in the destination project;
-3. merges a marker-delimited block (`<!-- BEGIN/END SECOND BRAIN
+4. merges the Stop-hook entry into the destination's
+   `.claude/settings.json` via `uv run scripts/merge_settings.py`
+   (preserves any hooks/config already there; idempotent re-run);
+5. merges a marker-delimited block (`<!-- BEGIN/END SECOND BRAIN
    SYSTEM -->`) into the destination's `CLAUDE.md`: creates the file if it
    doesn't exist, appends the block if the file exists without touching
    the user's existing content, or updates the block in place if it's
    already present (idempotent re-run);
-4. if the destination is a Git repository, runs
+6. if the destination is a Git repository, runs
    `git config core.hooksPath .claude/hooks` to hook up the pre-commit
    hook.
 
@@ -63,6 +74,10 @@ The script:
 - Windows with Git for Windows (hooks run through the Bash/MSYS environment
   bundled with Git for Windows).
 - PowerShell 5.1+ or PowerShell 7+.
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) — used to
+  run the end-of-session reminder hook (`.claude/hooks/session_reminder.py`)
+  and to merge `.claude/settings.json` during installation. If it's
+  missing, `install.ps1` offers to install it automatically on Windows.
 
 ## Customizing the pre-commit hook
 
