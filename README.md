@@ -63,3 +63,18 @@ The script:
 - Windows with Git for Windows (hooks run through the Bash/MSYS environment
   bundled with Git for Windows).
 - PowerShell 5.1+ or PowerShell 7+.
+
+## Customizing the pre-commit hook
+
+`.claude/hooks/pre-commit` is a syntactic check, not a semantic one: it
+only verifies that *some* file under `docs/` or `CLAUDE.md` was staged
+alongside source changes. The `EXCLUDE_PATTERN` variable at the top of the
+file (already copied into the destination project, no templating happens
+here) lists paths ignored when deciding whether "source changed" — add
+more lockfiles, generated files, or vendored paths there if the default
+set (tests, CI, common lockfiles, `.claude/`) doesn't fit the project.
+Bypassing with `git commit --no-verify` is legitimate for a WIP commit on
+a private branch you'll squash later, or for a doc-only commit you're
+about to make immediately after — don't touch `docs/` just to satisfy the
+hook ("doc-touch"); see
+`.claude/skills/update-second-brain/SKILL.md` for the full policy.
