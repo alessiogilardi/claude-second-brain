@@ -11,8 +11,8 @@
     Destination project folder. Default: "." (current folder).
 
 .EXAMPLE
-    .\init.ps1
-    .\init.ps1 ..\MyProject
+    .\install.ps1
+    .\install.ps1 ..\MyProject
 #>
 
 [CmdletBinding()]
@@ -51,7 +51,7 @@ function Merge-SecondBrainBlock {
     $endIndex = $ExistingContent.IndexOf($secondBrainEndMarker)
 
     if ($beginIndex -ge 0 -and $endIndex -ge 0) {
-        # Block already present (init.ps1 re-run): replace it in place,
+        # Block already present (install.ps1 re-run): replace it in place,
         # leaving the rest of the user-written file untouched.
         $endIndex += $secondBrainEndMarker.Length
         $before = $ExistingContent.Substring(0, $beginIndex)

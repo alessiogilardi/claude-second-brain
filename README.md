@@ -26,21 +26,21 @@ claude-second-brain-skill/
 │       ├── layout.md
 │       ├── patterns.md
 │       └── testing.md
-├── init.ps1                               # injection script for the destination project
+├── install.ps1                             # injection script for the destination project
 └── README.md
 ```
 
 ## How to use it
 
-From this repository, run `init.ps1` pointing at the folder of the project
-where you want to install the second brain:
+From this repository, run `install.ps1` pointing at the folder of the
+project where you want to install the second brain:
 
 ```powershell
 # Install into the current folder (default)
-.\init.ps1
+.\install.ps1
 
 # Install into another project
-.\init.ps1 ..\MyProject
+.\install.ps1 ..\MyProject
 ```
 
 The script:
