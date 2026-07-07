@@ -8,21 +8,19 @@ via a Claude Code skill and a pre-commit git hook.
 
 ```text
 claude-second-brain-skill/
-├── template/
-│   ├── CLAUDE.md                          # block merged into the destination's CLAUDE.md
-│   ├── .claude/
-│   │   ├── settings.json                  # wires the Stop-hook end-of-session reminder
-│   │   ├── hooks/
-│   │   │   ├── pre-commit                 # blocks code commits without a docs update
-│   │   │   └── session_reminder.py        # blocking end-of-session reminder (uv run)
-│   │   └── skills/
-│   │       ├── update-second-brain/
-│   │       │   └── SKILL.md               # skill that keeps the documentation in sync
-│   │       └── onboard-second-brain/
-│   │           └── SKILL.md               # skill that bootstraps docs/ from placeholders (once)
-│   ├── .github/
-│   │   └── workflows/
-│   │       └── second-brain.yml           # CI backstop, re-checks the PR diff
+├── skills/                                 # complete, non-templated skill implementations
+│   ├── update-second-brain/
+│   │   └── SKILL.md                        # skill that keeps the documentation in sync
+│   └── onboard-second-brain/
+│       └── SKILL.md                        # skill that bootstraps docs/ from placeholders (once)
+├── hooks/                                   # complete, non-templated hook implementations
+│   ├── pre-commit                           # blocks code commits without a docs update
+│   └── session_reminder.py                  # blocking end-of-session reminder (uv run)
+├── workflows/                               # complete, non-templated CI workflow
+│   └── second-brain.yml                     # CI backstop, re-checks the PR diff
+├── template/                                # genuinely template-like content: merged fragments + placeholders
+│   ├── CLAUDE.md                            # block merged into the destination's CLAUDE.md
+│   ├── settings.json                        # wires the Stop-hook end-of-session reminder
 │   └── docs/
 │       ├── adr/
 │       │   └── template.md
@@ -61,8 +59,8 @@ The script:
    official installer (interactively, or automatically with `-InstallUv`)
    — `uv` runs the end-of-session reminder hook and the `settings.json`
    merge below, so both are skipped (with a warning) if it stays missing;
-3. copies the contents of `template/docs/`, `template/.claude/` and
-   `template/.github/` without overwriting files that already exist in
+3. copies the contents of `template/docs/` and `workflows/` (into
+   `.github/workflows/`) without overwriting files that already exist in
    the destination project;
 4. merges the Stop-hook entry into the destination's
    `.claude/settings.json` via `uv run scripts/merge_settings.py`
@@ -94,7 +92,7 @@ exists on machines where `install.ps1` was actually run; a fresh clone, a
 teammate who skipped installation, or a CI runner gets **zero**
 enforcement from the local hook alone, silently.
 
-`template/.github/workflows/second-brain.yml` (copied into the
+`workflows/second-brain.yml` (copied into the
 destination's `.github/workflows/` by `install.ps1`, same
 never-overwrite rule as everything else) closes that gap: it re-applies
 the same check to the PR diff on GitHub Actions, so it travels with the

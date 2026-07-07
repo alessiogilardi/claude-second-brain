@@ -63,9 +63,11 @@ $ErrorActionPreference = "Stop"
 $scriptRoot = $PSScriptRoot
 $templateRoot = Join-Path $scriptRoot "template"
 $templateDocs = Join-Path $templateRoot "docs"
-$templateClaude = Join-Path $templateRoot ".claude"
-$templateGithub = Join-Path $templateRoot ".github"
+$templateSettings = Join-Path $templateRoot "settings.json"
 $templateClaudeMd = Join-Path $templateRoot "CLAUDE.md"
+$skillsRoot = Join-Path $scriptRoot "skills"
+$hooksRoot = Join-Path $scriptRoot "hooks"
+$workflowsRoot = Join-Path $scriptRoot "workflows"
 $mergeSettingsScript = Join-Path $scriptRoot "scripts\merge_settings.py"
 
 if (-not (Test-Path $TargetPath)) {
@@ -417,7 +419,7 @@ else {
     Write-Host "  [UV] Found." -ForegroundColor Green
 }
 
-# 3. Copy the user-owned docs/ and optional .github/ trees, never
+# 3. Copy the user-owned docs/ and optional CI workflow, never
 #    overwriting a file that already exists in the destination. The
 #    system-owned .claude files (hooks, skill) are synced separately
 #    below (step 3b) since those *are* meant to be upgraded on re-run.
@@ -426,13 +428,17 @@ Write-Host "Copying template/docs/ ..." -ForegroundColor Cyan
 Copy-WithoutOverwrite -Source $templateDocs -Destination (Join-Path $destination "docs")
 
 Write-Host ""
-Write-Host "Copying template/.github/ (optional CI backstop) ..." -ForegroundColor Cyan
-Copy-WithoutOverwrite -Source $templateGithub -Destination (Join-Path $destination ".github")
+Write-Host "Copying workflows/ (optional CI backstop) ..." -ForegroundColor Cyan
+Copy-WithoutOverwrite -Source $workflowsRoot -Destination (Join-Path $destination ".github\workflows")
 
 # 3b. System-owned .claude files (pre-commit hook, Stop-hook reminder,
 #     skill) are tracked in a manifest and upgraded in place on re-run,
-#     unlike the never-overwrite docs/.github copy above. settings.json
+#     unlike the never-overwrite docs/workflow copy above. settings.json
 #     is merged separately below (step 4), never through this path.
+#     Each entry's source lives under its own top-level package
+#     (hooks/, skills/) while DestRelative is the fixed destination
+#     path Claude Code/git actually require -- the two no longer mirror
+#     each other 1:1.
 Write-Host ""
 Write-Host "Syncing system-owned .claude files ..." -ForegroundColor Cyan
 
@@ -446,19 +452,19 @@ if (Test-Path $manifestPath) {
 }
 
 $systemOwnedFiles = @(
-    ".claude\hooks\pre-commit",
-    ".claude\skills\update-second-brain\SKILL.md",
-    ".claude\skills\onboard-second-brain\SKILL.md"
+    @{ SourceRoot = $hooksRoot;  RelativeInRoot = "pre-commit";                   DestRelative = ".claude\hooks\pre-commit" },
+    @{ SourceRoot = $skillsRoot; RelativeInRoot = "update-second-brain\SKILL.md"; DestRelative = ".claude\skills\update-second-brain\SKILL.md" },
+    @{ SourceRoot = $skillsRoot; RelativeInRoot = "onboard-second-brain\SKILL.md"; DestRelative = ".claude\skills\onboard-second-brain\SKILL.md" }
 )
 if ($uvAvailable) {
-    $systemOwnedFiles += ".claude\hooks\session_reminder.py"
+    $systemOwnedFiles += @{ SourceRoot = $hooksRoot; RelativeInRoot = "session_reminder.py"; DestRelative = ".claude\hooks\session_reminder.py" }
 }
 
-foreach ($relativePath in $systemOwnedFiles) {
+foreach ($file in $systemOwnedFiles) {
     Sync-SystemOwnedFile `
-        -RelativePath $relativePath `
-        -TemplateFile (Join-Path $templateRoot $relativePath) `
-        -DestFile (Join-Path $destination $relativePath) `
+        -RelativePath $file.DestRelative `
+        -TemplateFile (Join-Path $file.SourceRoot $file.RelativeInRoot) `
+        -DestFile (Join-Path $destination $file.DestRelative) `
         -Manifest $manifest `
         -Force:$Force
 }
@@ -474,7 +480,6 @@ $manifest | ConvertTo-Json | Set-Content -Path $manifestPath
 if ($uvAvailable) {
     Write-Host ""
     Write-Host "Merging .claude/settings.json ..." -ForegroundColor Cyan
-    $templateSettings = Join-Path $templateClaude "settings.json"
     $destSettings = Join-Path $destination ".claude\settings.json"
     $mergeOutput = uv run $mergeSettingsScript --template $templateSettings --destination $destSettings
     switch ($mergeOutput) {

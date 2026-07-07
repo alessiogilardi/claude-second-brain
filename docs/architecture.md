@@ -12,30 +12,33 @@ it installs, which then run *inside* the destination project, not here.
 
 - **`install.ps1`** (PowerShell) — entry point. Creates the required
   folders in the destination, checks for `uv`, copies
-  `template/docs/` and `template/.github/` without overwriting files
+  `template/docs/` and `workflows/` without overwriting files
   that already exist (`Copy-WithoutOverwrite`), syncs system-owned
   `.claude/` files via a SHA-256 manifest that upgrades in place unless
   hand-edited (`Sync-SystemOwnedFile`), merges `.claude/settings.json`
   through `scripts/merge_settings.py`, merges a marker-delimited block
   into the destination's `CLAUDE.md`, and points `core.hooksPath` at
   `.claude/hooks`. Also supports `-Uninstall` (and `-PurgeDocs`) to
-  reverse all of the above.
+  reverse all of the above. Source packages (`skills/`, `hooks/`,
+  `workflows/`) no longer mirror their destination path 1:1 — each is
+  mapped explicitly to its fixed destination (`.claude/skills/`,
+  `.claude/hooks/`, `.github/workflows/`).
 - **`scripts/merge_settings.py`** (Python, run via `uv run`) — merges
   only the Stop-hook entry referencing `session_reminder.py` into a
   destination's `.claude/settings.json`, leaving any other hooks/config
   untouched. Build-time tool only; never copied to a destination.
-- **`template/.claude/hooks/pre-commit`** (POSIX sh) — installed git
+- **`hooks/pre-commit`** (POSIX sh) — installed git
   hook: rejects a commit that changes source files without also staging
   a `docs/` or `CLAUDE.md` change. Syntactic check only (`EXCLUDE_PATTERN`
   decides what counts as "source").
-- **`template/.claude/hooks/session_reminder.py`** (Python stdlib,
+- **`hooks/session_reminder.py`** (Python stdlib,
   Stop hook) — mirrors the pre-commit exclusion logic but runs at
   end-of-session, catching uncommitted drift that never got staged for
   a commit.
-- **`template/.github/workflows/second-brain.yml`** — re-applies the
+- **`workflows/second-brain.yml`** — re-applies the
   same check in CI against the PR diff, since `core.hooksPath` is local
   git config and isn't cloned.
-- **`template/.claude/skills/{update-second-brain,onboard-second-brain}/SKILL.md`**
+- **`skills/{update-second-brain,onboard-second-brain}/SKILL.md`**
   — the two Claude Code skills that actually read/write `docs/` content:
   `onboard-second-brain` bootstraps a fresh destination's placeholders
   once; `update-second-brain` keeps `docs/` in sync afterward.
@@ -66,4 +69,4 @@ system-owned files vs. never-overwrite for user-owned files, and the
 triple-mirrored `EXCLUDE_PATTERN` enforcement across the local hook, the
 Stop hook, and the CI workflow.
 
-*Last updated: 2026-07-07 — verified against commit `9ea2b62`.*
+*Last updated: 2026-07-07 — verified against commit `9f70a8a`.*

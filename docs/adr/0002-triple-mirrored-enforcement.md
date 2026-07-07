@@ -21,12 +21,12 @@ Implement the same syntactic check (`EXCLUDE_PATTERN` regex + "source
 changed without a matching docs change" logic) independently in three
 places, kept mirrored by convention rather than shared code:
 
-1. `template/.claude/hooks/pre-commit` (POSIX sh) — fast local feedback
+1. `hooks/pre-commit` (POSIX sh) — fast local feedback
    at commit time.
-2. `template/.claude/hooks/session_reminder.py` (Python, Stop hook) —
+2. `hooks/session_reminder.py` (Python, Stop hook) —
    catches uncommitted drift at end-of-session, before anything is even
    staged.
-3. `template/.github/workflows/second-brain.yml` (GitHub Actions) —
+3. `workflows/second-brain.yml` (GitHub Actions) —
    re-applies the check against the full PR diff; travels with the repo
    and can't be skipped with `--no-verify`.
 
@@ -55,4 +55,4 @@ places, kept mirrored by convention rather than shared code:
   is documented at the top of all three files as an explicit maintenance
   requirement, not caught automatically.
 
-*Last updated: 2026-07-07 — verified against commit `9ea2b62`.*
+*Last updated: 2026-07-07 — verified against commit `9f70a8a`.*

@@ -23,3 +23,4 @@ to `docs/` or this file — enforced syntactically by
 `.claude/hooks/pre-commit`. On rejection: run the skill, stage the docs
 with the code, retry. Never touch `docs/` just to pass the hook.
 <!-- END SECOND BRAIN SYSTEM -->
+
