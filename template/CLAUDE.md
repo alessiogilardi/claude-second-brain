@@ -1,31 +1,25 @@
 <!-- BEGIN SECOND BRAIN SYSTEM (managed by claude-second-brain-skill: do not edit this block by hand, edit template/CLAUDE.md and rerun install.ps1) -->
 # Second Brain
 
-This project uses the "Second Brain" documentation system: a set of files
-in `docs/` describing the actual state of architecture, database,
-patterns, and testing, meant to be read and maintained by AI agents. The
-full policy — memory routing, when to read/write what, the update
-procedure, ADR numbering, what not to write, freshness footers — lives in
-a single place, not here:
+`docs/` is the source of truth for the system's current state
+(architecture, database, patterns, testing, layout, glossary, ADRs),
+maintained by AI agents. The full policy — memory routing, update
+procedure, ADR numbering, freshness footers, hook exclusions and
+legitimate bypasses — lives only in
+`.claude/skills/update-second-brain/SKILL.md`.
 
-`.claude/skills/update-second-brain/SKILL.md`
-
-Invoke it with the Skill tool (`skill: "update-second-brain"`) after a
-database schema change, a structural refactor, a new architectural
-decision, a new recurring pattern, a testing strategy change, when the
-pre-commit hook rejects a commit with "[SECOND BRAIN SYSTEM] COMMIT
-REJECTED", or as an end-of-session check.
-
-## Navigation
+Invoke it (Skill tool, `skill: "update-second-brain"`) after: schema
+changes, structural refactors, new architectural decisions, new recurring
+patterns, testing-strategy changes, a "[SECOND BRAIN SYSTEM] COMMIT
+REJECTED" pre-commit rejection, or as an end-of-session check. If any
+`docs/*.md` file still carries the `> Placeholder —` marker, run
+`onboard-second-brain` instead — the one-time bootstrap from template
+placeholders to real content.
 
 @docs/README.md
 
-## Operating rule
-
-Every commit that changes source code must come with a matching update in
-`docs/` or in this file: a git hook in `.claude/hooks/pre-commit`
-automatically checks this and rejects the commit otherwise. The hook is a
-syntactic reminder, not a semantic guarantee — see the skill above for the
-exact policy, configurable exclusions, and when bypassing it legitimately
-is fine.
+**Commit rule**: a commit touching source code must also stage an update
+to `docs/` or this file — enforced syntactically by
+`.claude/hooks/pre-commit`. On rejection: run the skill, stage the docs
+with the code, retry. Never touch `docs/` just to pass the hook.
 <!-- END SECOND BRAIN SYSTEM -->

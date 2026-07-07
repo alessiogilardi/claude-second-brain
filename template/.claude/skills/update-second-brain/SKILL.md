@@ -56,9 +56,19 @@ vice versa): pick one home per fact.
   decision should not be written silently. Draft the content using
   `docs/adr/template.md` as a base and present it to the user for
   confirmation before saving it (see "ADR numbering" below for the file
-  name).
+  name). **Unattended fallback**: if running with no user available to
+  confirm (e.g. a commit rejected by the pre-commit hook mid-automation),
+  write the ADR anyway with `Status: Proposed` and continue — proposal
+  mode means "never silently mark a decision `Accepted`", not "block
+  until a human answers". The user reviews later and flips the status to
+  `Accepted`, edits it, or deletes the file.
 
 ## Procedure
+
+If any file under `docs/` still carries the `> Placeholder —` marker,
+stop here and run the `onboard-second-brain` skill instead — it owns the
+one-time bootstrap from template placeholders to real content. Once no
+placeholder remains, everything below applies.
 
 Follow these steps every time the skill runs, whether triggered mid-session
 or as an end-of-session check:
@@ -149,30 +159,11 @@ time you write real content into the file, not before: a footer citing
 this template repo's own commit history would be meaningless once copied
 into a destination project.
 
-## End-of-session checklist
+## End-of-session check
 
 Before considering the work done (or before retrying a commit rejected by
-the pre-commit hook), go through this checklist point by point:
-
-- [ ] **ADR**: was a relevant architectural decision made? If so, propose
-      a new file in `docs/adr/` based on `docs/adr/template.md`.
-- [ ] **Database schema**: did tables, columns, relationships, or
-      migrations change? Update `docs/database.md` accordingly.
-- [ ] **Patterns**: was a new or recurring architectural pattern or
-      convention introduced? Map it in `docs/patterns.md`.
-- [ ] **Testing**: did frameworks, test types, or coverage policy change?
-      Update `docs/testing.md`.
-- [ ] **Overall architecture**: does the change affect the layout of
-      components or main flows? Update `docs/architecture.md` and/or
-      `docs/layout.md`.
-- [ ] **Glossary**: were new domain terms introduced? Add them to
-      `docs/glossary.md`.
-- [ ] **Navigation map**: did you add/remove a file under `docs/`? Update
-      `docs/README.md`.
-- [ ] **Freshness footers**: did you refresh the footer of every file you
-      touched?
-
-Only after completing the checklist, stage the updated documentation
-files together with the code: the pre-commit hook requires every commit
-that changes source code to also include a change in `docs/` or in
-`CLAUDE.md`.
+the pre-commit hook): re-run the step-2 mapping against `git diff HEAD
+--stat` and confirm every row that fires has a matching staged doc edit,
+footers included. Then stage the updated documentation files together
+with the code: the pre-commit hook requires every commit that changes
+source code to also include a change in `docs/` or in `CLAUDE.md`.
