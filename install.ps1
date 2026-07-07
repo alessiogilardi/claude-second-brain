@@ -21,9 +21,30 @@
     .git/hooks/pre-commit) even if it isn't managed by Second Brain.
     Without this switch, install.ps1 warns and leaves it untouched.
 
+.PARAMETER Force
+    Overwrite system-owned files (.claude/hooks/pre-commit,
+    .claude/hooks/session_reminder.py, .claude/skills/update-second-brain/
+    SKILL.md) even when they were modified locally since the last install,
+    or were never tracked by a Second Brain manifest at all. Without this
+    switch, install.ps1 only upgrades a system-owned file when it is
+    still byte-identical to what the previous install wrote.
+
+.PARAMETER Uninstall
+    Remove the Second Brain system from TargetPath instead of installing
+    it: the CLAUDE.md block, the Stop-hook entry in .claude/settings.json,
+    core.hooksPath (only if it's still ".claude/hooks"), and all
+    system-owned files. docs/ is left in place -- pass -PurgeDocs to
+    remove it too.
+
+.PARAMETER PurgeDocs
+    Only meaningful with -Uninstall: also delete docs/. Without it,
+    uninstalling keeps docs/ since it's user-authored content, not a
+    Second Brain system file.
+
 .EXAMPLE
     .\install.ps1
     .\install.ps1 ..\MyProject
+    .\install.ps1 ..\MyProject -Uninstall
 #>
 
 [CmdletBinding()]
@@ -31,7 +52,10 @@ param(
     [Parameter(Position = 0)]
     [string]$TargetPath = ".",
     [switch]$InstallUv,
-    [switch]$ForceHooksPath
+    [switch]$ForceHooksPath,
+    [switch]$Force,
+    [switch]$Uninstall,
+    [switch]$PurgeDocs
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,6 +64,7 @@ $scriptRoot = $PSScriptRoot
 $templateRoot = Join-Path $scriptRoot "template"
 $templateDocs = Join-Path $templateRoot "docs"
 $templateClaude = Join-Path $templateRoot ".claude"
+$templateGithub = Join-Path $templateRoot ".github"
 $templateClaudeMd = Join-Path $templateRoot "CLAUDE.md"
 $mergeSettingsScript = Join-Path $scriptRoot "scripts\merge_settings.py"
 
@@ -50,6 +75,144 @@ $destination = (Resolve-Path -Path $TargetPath).Path
 
 $secondBrainBeginMarker = "<!-- BEGIN SECOND BRAIN SYSTEM"
 $secondBrainEndMarker = "<!-- END SECOND BRAIN SYSTEM -->"
+
+if ($Uninstall) {
+    Write-Host "=== Second Brain - Uninstall ===" -ForegroundColor Cyan
+    Write-Host "Target: $destination"
+    Write-Host ""
+
+    # 1. Remove the marker-delimited block from CLAUDE.md; delete the
+    #    file entirely if the block was its only content.
+    $destClaudeMd = Join-Path $destination "CLAUDE.md"
+    if (Test-Path $destClaudeMd) {
+        $content = Get-Content -Path $destClaudeMd -Raw
+        $beginIndex = $content.IndexOf($secondBrainBeginMarker)
+        $endIndex = $content.IndexOf($secondBrainEndMarker)
+
+        if ($beginIndex -ge 0 -and $endIndex -ge 0) {
+            $endIndex += $secondBrainEndMarker.Length
+            $remaining = $content.Substring(0, $beginIndex) + $content.Substring($endIndex)
+
+            if ([string]::IsNullOrWhiteSpace($remaining)) {
+                Remove-Item -Path $destClaudeMd -Force
+                Write-Host "[REMOVED] CLAUDE.md (Second Brain block was its only content)" -ForegroundColor Green
+            }
+            else {
+                Set-Content -Path $destClaudeMd -Value $remaining -NoNewline
+                Write-Host "[UPDATED] Removed Second Brain block from CLAUDE.md" -ForegroundColor Green
+            }
+        }
+        else {
+            Write-Host "[SKIP] No Second Brain block found in CLAUDE.md" -ForegroundColor Yellow
+        }
+    }
+
+    # 2. Remove the Stop-hook entry matching session_reminder.py from
+    #    .claude/settings.json, leaving any other hooks/config untouched.
+    $destSettings = Join-Path $destination ".claude\settings.json"
+    if (Test-Path $destSettings) {
+        $stopHookMarker = "session_reminder.py"
+        try {
+            $settings = Get-Content -Path $destSettings -Raw | ConvertFrom-Json
+        }
+        catch {
+            $settings = $null
+        }
+
+        $hadMarkerHook = $false
+        if ($settings -and $settings.hooks -and $settings.hooks.Stop) {
+            foreach ($entry in $settings.hooks.Stop) {
+                foreach ($hook in $entry.hooks) {
+                    if ($hook.command -like "*$stopHookMarker*") { $hadMarkerHook = $true }
+                }
+            }
+        }
+
+        if ($hadMarkerHook) {
+            $settings.hooks.Stop = @($settings.hooks.Stop | ForEach-Object {
+                $entry = $_
+                $keptHooks = @($entry.hooks | Where-Object { $_.command -notlike "*$stopHookMarker*" })
+                if ($keptHooks.Count -gt 0) {
+                    $entry.hooks = $keptHooks
+                    $entry
+                }
+            })
+            $settings | ConvertTo-Json -Depth 10 | Set-Content -Path $destSettings
+            Write-Host "[UPDATED] Removed Stop-hook entry from .claude/settings.json" -ForegroundColor Green
+        }
+        else {
+            Write-Host "[SKIP] No Second Brain Stop-hook entry found in .claude/settings.json" -ForegroundColor Yellow
+        }
+    }
+
+    # 3. Unset core.hooksPath only if it's still Second Brain's.
+    $gitDir = Join-Path $destination ".git"
+    $desiredHooksPath = ".claude/hooks"
+    if (Test-Path $gitDir) {
+        Push-Location $destination
+        try {
+            $currentHooksPath = (git config --get core.hooksPath 2>$null)
+            if ($currentHooksPath -eq $desiredHooksPath) {
+                git config --unset core.hooksPath
+                Write-Host "[GIT] core.hooksPath unset" -ForegroundColor Green
+            }
+            else {
+                Write-Host "[GIT] core.hooksPath is not Second Brain's, leaving untouched" -ForegroundColor Yellow
+            }
+        }
+        finally {
+            Pop-Location
+        }
+    }
+
+    # 4. Delete system-owned files, then prune the directories left empty.
+    $systemOwnedRelativePaths = @(
+        ".claude\hooks\pre-commit",
+        ".claude\hooks\session_reminder.py",
+        ".claude\skills\update-second-brain\SKILL.md",
+        ".claude\skills\onboard-second-brain\SKILL.md",
+        ".claude\.second-brain-manifest.json",
+        ".github\workflows\second-brain.yml"
+    )
+    foreach ($relativePath in $systemOwnedRelativePaths) {
+        $path = Join-Path $destination $relativePath
+        if (Test-Path $path) {
+            Remove-Item -Path $path -Force
+            Write-Host "[REMOVED] $relativePath" -ForegroundColor Green
+        }
+    }
+
+    $dirsToPruneIfEmpty = @(
+        ".claude\skills\update-second-brain",
+        ".claude\skills\onboard-second-brain",
+        ".claude\skills",
+        ".claude\hooks",
+        ".github\workflows",
+        ".github"
+    )
+    foreach ($relativePath in $dirsToPruneIfEmpty) {
+        $path = Join-Path $destination $relativePath
+        if ((Test-Path $path) -and ((Get-ChildItem -Path $path -Force | Measure-Object).Count -eq 0)) {
+            Remove-Item -Path $path -Force
+        }
+    }
+
+    # 5. docs/ is user-owned content: left in place unless -PurgeDocs.
+    if ($PurgeDocs) {
+        $docsPath = Join-Path $destination "docs"
+        if (Test-Path $docsPath) {
+            Remove-Item -Path $docsPath -Recurse -Force
+            Write-Host "[REMOVED] docs/ (-PurgeDocs)" -ForegroundColor Green
+        }
+    }
+    else {
+        Write-Host "[KEPT] docs/ (pass -PurgeDocs to remove it too)" -ForegroundColor Yellow
+    }
+
+    Write-Host ""
+    Write-Host "=== Second Brain uninstalled from: $destination ===" -ForegroundColor Cyan
+    return
+}
 
 function Merge-SecondBrainBlock {
     param(
@@ -108,6 +271,72 @@ function Copy-WithoutOverwrite {
     }
 }
 
+function Get-Sha256Hash {
+    param([string]$Path)
+    return (Get-FileHash -Path $Path -Algorithm SHA256).Hash
+}
+
+function Sync-SystemOwnedFile {
+    # System-owned files (the pre-commit hook, the Stop-hook reminder,
+    # the skill) get upgraded in place on re-run instead of being
+    # skipped forever like Copy-WithoutOverwrite does for user-owned
+    # files -- but only when the destination copy is still exactly what
+    # the previous install wrote, tracked via a SHA-256 recorded in
+    # .claude/.second-brain-manifest.json. A file that was hand-edited
+    # (or never tracked, e.g. upgrading from a pre-manifest install) is
+    # left alone unless -Force is passed.
+    param(
+        [string]$RelativePath,
+        [string]$TemplateFile,
+        [string]$DestFile,
+        [hashtable]$Manifest,
+        [bool]$Force
+    )
+
+    $templateHash = Get-Sha256Hash -Path $TemplateFile
+
+    if (-not (Test-Path $DestFile)) {
+        $destDir = Split-Path -Parent $DestFile
+        if (-not (Test-Path $destDir)) {
+            New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+        }
+        Copy-Item -Path $TemplateFile -Destination $DestFile
+        $Manifest[$RelativePath] = $templateHash
+        Write-Host "  [COPY] $RelativePath" -ForegroundColor Green
+        return
+    }
+
+    $destHash = Get-Sha256Hash -Path $DestFile
+
+    if ($destHash -eq $templateHash) {
+        $Manifest[$RelativePath] = $templateHash
+        Write-Host "  [OK] $RelativePath (up to date)" -ForegroundColor DarkGray
+        return
+    }
+
+    $recordedHash = $Manifest[$RelativePath]
+    $unmodifiedSinceInstall = $recordedHash -and ($destHash -eq $recordedHash)
+
+    if ($unmodifiedSinceInstall -or $Force) {
+        Copy-Item -Path $TemplateFile -Destination $DestFile -Force
+        $Manifest[$RelativePath] = $templateHash
+        if ($unmodifiedSinceInstall) {
+            Write-Host "  [UPDATED] $RelativePath" -ForegroundColor Green
+        }
+        else {
+            Write-Host "  [UPDATED] $RelativePath (overwritten with -Force)" -ForegroundColor Green
+        }
+        return
+    }
+
+    if ($recordedHash) {
+        Write-Host "  [SKIP] $RelativePath was modified locally since install -- not overwriting (re-run with -Force to overwrite anyway)." -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "  [SKIP] $RelativePath isn't tracked by a Second Brain manifest yet, can't tell if it was hand-modified (re-run with -Force to adopt and overwrite)." -ForegroundColor Yellow
+    }
+}
+
 function Install-Uv {
     Write-Host "  Installing uv via the official installer..." -ForegroundColor Cyan
     try {
@@ -133,6 +362,7 @@ Write-Host ""
 $foldersToCreate = @(
     (Join-Path $destination ".claude\hooks"),
     (Join-Path $destination ".claude\skills\update-second-brain"),
+    (Join-Path $destination ".claude\skills\onboard-second-brain"),
     (Join-Path $destination "docs\adr")
 )
 
@@ -187,20 +417,57 @@ else {
     Write-Host "  [UV] Found." -ForegroundColor Green
 }
 
-# 3. Recursively copy docs/ and .claude/ without overwriting existing files.
-#    settings.json (and, if uv is unavailable, session_reminder.py) are
-#    excluded here and handled separately below.
+# 3. Copy the user-owned docs/ and optional .github/ trees, never
+#    overwriting a file that already exists in the destination. The
+#    system-owned .claude files (hooks, skill) are synced separately
+#    below (step 3b) since those *are* meant to be upgraded on re-run.
 Write-Host ""
 Write-Host "Copying template/docs/ ..." -ForegroundColor Cyan
 Copy-WithoutOverwrite -Source $templateDocs -Destination (Join-Path $destination "docs")
 
 Write-Host ""
-Write-Host "Copying template/.claude/ ..." -ForegroundColor Cyan
-$claudeExclude = @("settings.json")
-if (-not $uvAvailable) {
-    $claudeExclude += "hooks\session_reminder.py"
+Write-Host "Copying template/.github/ (optional CI backstop) ..." -ForegroundColor Cyan
+Copy-WithoutOverwrite -Source $templateGithub -Destination (Join-Path $destination ".github")
+
+# 3b. System-owned .claude files (pre-commit hook, Stop-hook reminder,
+#     skill) are tracked in a manifest and upgraded in place on re-run,
+#     unlike the never-overwrite docs/.github copy above. settings.json
+#     is merged separately below (step 4), never through this path.
+Write-Host ""
+Write-Host "Syncing system-owned .claude files ..." -ForegroundColor Cyan
+
+$manifestPath = Join-Path $destination ".claude\.second-brain-manifest.json"
+$manifest = @{}
+if (Test-Path $manifestPath) {
+    $rawManifest = Get-Content -Path $manifestPath -Raw | ConvertFrom-Json
+    if ($rawManifest) {
+        $rawManifest.PSObject.Properties | ForEach-Object { $manifest[$_.Name] = $_.Value }
+    }
 }
-Copy-WithoutOverwrite -Source $templateClaude -Destination (Join-Path $destination ".claude") -ExcludeRelative $claudeExclude
+
+$systemOwnedFiles = @(
+    ".claude\hooks\pre-commit",
+    ".claude\skills\update-second-brain\SKILL.md",
+    ".claude\skills\onboard-second-brain\SKILL.md"
+)
+if ($uvAvailable) {
+    $systemOwnedFiles += ".claude\hooks\session_reminder.py"
+}
+
+foreach ($relativePath in $systemOwnedFiles) {
+    Sync-SystemOwnedFile `
+        -RelativePath $relativePath `
+        -TemplateFile (Join-Path $templateRoot $relativePath) `
+        -DestFile (Join-Path $destination $relativePath) `
+        -Manifest $manifest `
+        -Force:$Force
+}
+
+$manifestDir = Split-Path -Parent $manifestPath
+if (-not (Test-Path $manifestDir)) {
+    New-Item -ItemType Directory -Path $manifestDir -Force | Out-Null
+}
+$manifest | ConvertTo-Json | Set-Content -Path $manifestPath
 
 # 4. Merge .claude/settings.json via uv (reliable JSON round-trip), only
 #    if uv is available.
@@ -213,6 +480,7 @@ if ($uvAvailable) {
     switch ($mergeOutput) {
         "created" { Write-Host "  [CREATED] .claude/settings.json" -ForegroundColor Green }
         "merged" { Write-Host "  [MERGED] Stop-hook entry added to existing .claude/settings.json" -ForegroundColor Green }
+        "updated" { Write-Host "  [UPDATED] Stop-hook command refreshed in existing .claude/settings.json" -ForegroundColor Green }
         "skip-already-present" { Write-Host "  [SKIP] .claude/settings.json already has the Stop-hook entry" -ForegroundColor Yellow }
         default { Write-Host "  [WARN] merge_settings.py: $mergeOutput" -ForegroundColor Red }
     }
