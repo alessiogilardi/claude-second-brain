@@ -19,7 +19,16 @@
 # generated files, vendored code, etc). Legitimate reasons to bypass with
 # --no-verify: a WIP commit on a private branch you'll squash later, or a
 # doc-only follow-up commit you are about to make immediately after.
-EXCLUDE_PATTERN='^(tests?/|\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/)'
+#
+# tests?/ intentionally matches at any depth (via "(^|/)"), not just
+# top-level, so nested test dirs (e.g. src/pkg/tests/) are excluded too.
+# That means testing-*strategy* changes (new test types, frameworks,
+# coverage tooling) are never caught here -- only by the Stop-hook
+# reminder and the skill's end-of-session pass, since test-content
+# commits never reach this hook at all. Narrow the pattern to flag test
+# *config* files specifically (pytest.ini, conftest.py, CI test steps)
+# if stronger enforcement is needed.
+EXCLUDE_PATTERN='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/)|(^|/)tests?/'
 
 staged_files=$(git diff --cached --name-only)
 
@@ -41,19 +50,10 @@ if [ -n "$source_changed" ] && [ -z "$docs_changed" ]; then
     echo "  You have staged source code changes, but no change in docs/"
     echo "  or in the CLAUDE.md file."
     echo ""
-    echo "  Claude, before retrying the commit run the skill:"
-    echo "    .claude/skills/update-second-brain"
-    echo ""
-    echo "  to align ADRs, database schema, patterns, and testing"
-    echo "  strategies with the changes you just introduced, then stage"
-    echo "  the updated documentation files and retry the commit."
-    echo ""
-    echo "  If this rejection is a false positive (the change is covered"
-    echo "  by EXCLUDE_PATTERN above but shouldn't be, or you have a"
-    echo "  legitimate reason -- a WIP commit you'll squash, or an"
-    echo "  immediate doc-only follow-up commit), use git commit"
-    echo "  --no-verify. Don't touch docs/ just to satisfy this check;"
-    echo "  see .claude/skills/update-second-brain/SKILL.md."
+    echo "  Claude, run the update-second-brain skill, then retry the"
+    echo "  commit. If this is a false positive or a legitimate exception,"
+    echo "  see .claude/skills/update-second-brain/SKILL.md and use"
+    echo "  git commit --no-verify."
     echo ""
     echo "=================================================================="
     exit 1
