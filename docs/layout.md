@@ -53,5 +53,8 @@ repo/
 - `docs/` and `.claude/` at the repo root (this file's own location) are
   this repo's own Second Brain install — a dogfooding instance of the
   system the repo distributes, not part of what gets templated out.
+- `.gitignore` excludes `.claude/settings.local.json` and `.vscode/`:
+  per-contributor local config (personal Claude Code settings, personal
+  editor settings), never shared through the repo.
 
-*Last updated: 2026-07-07 — verified against commit `f3092ec`.*
+*Last updated: 2026-07-07 — verified against commit `79c2ce3`.*
