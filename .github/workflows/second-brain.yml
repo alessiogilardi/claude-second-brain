@@ -1,0 +1,45 @@
+# [SECOND BRAIN SYSTEM] CI backstop.
+#
+# .claude/hooks/pre-commit only runs on machines where core.hooksPath was
+# set up by install.ps1 -- that's local git config, so it isn't cloned
+# and can be skipped entirely (missing install, or plain --no-verify).
+# This workflow re-applies the same syntactic check to the PR diff so a
+# missing/bypassed local hook doesn't mean zero enforcement. Keep
+# EXCLUDE_PATTERN mirrored with .claude/hooks/pre-commit and
+# .claude/hooks/session_reminder.py.
+name: Second Brain docs check
+
+on:
+  pull_request:
+
+jobs:
+  docs-in-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify docs/ or CLAUDE.md changed alongside source
+        shell: bash
+        run: |
+          set -e
+          EXCLUDE_PATTERN='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/)|(^|/)tests?/'
+
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+
+          changed_files=$(git diff --name-only "$base_sha" "$head_sha")
+
+          if [ -z "$changed_files" ]; then
+            exit 0
+          fi
+
+          relevant_files=$(printf '%s\n' "$changed_files" | grep -vE "$EXCLUDE_PATTERN" || true)
+          docs_changed=$(printf '%s\n' "$relevant_files" | grep -E '^docs/|^CLAUDE\.md$' || true)
+          source_changed=$(printf '%s\n' "$relevant_files" | grep -vE '^docs/|^CLAUDE\.md$' || true)
+
+          if [ -n "$source_changed" ] && [ -z "$docs_changed" ]; then
+            echo "::error::[SECOND BRAIN SYSTEM] This PR changes source code but no file under docs/ or CLAUDE.md. Run the update-second-brain skill and push a docs update, or note in the PR description why this change doesn't need one."
+            exit 1
+          fi
