@@ -556,3 +556,7 @@ else {
 
 Write-Host ""
 Write-Host "=== Second Brain successfully set up in: $destination ===" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Recommended next step: run the onboard-second-brain skill now," -ForegroundColor Cyan
+Write-Host "before your first commit, so the one-time bootstrap cost is paid" -ForegroundColor Cyan
+Write-Host "here instead of inside a rejected first commit." -ForegroundColor Cyan

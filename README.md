@@ -79,6 +79,13 @@ The script:
    which case it warns and leaves things untouched (pass `-ForceHooksPath`
    to overwrite anyway).
 
+**Recommended:** run the `onboard-second-brain` skill right after
+installing, before the first commit. Otherwise the one-time bootstrap
+(replacing every `docs/*.md` placeholder with real content) gets
+triggered mid-commit the first time the pre-commit hook rejects a source
+change with no matching docs update — correct, but the worst possible
+moment to pay that cost on a large repo.
+
 ## Enforcement is per-clone, not per-repo
 
 `core.hooksPath` is **local git config** — it lives in `.git/config`, which
