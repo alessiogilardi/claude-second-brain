@@ -18,8 +18,3 @@ repo/
 
 Explain where new code should go depending on its type (e.g. "a new
 endpoint goes in X", "a new domain entity goes in Y").
-
----
-*Instructions for Claude: keep this file consistent with the actual folder
-structure; update it when top-level packages/modules are added or
-reorganized.*

@@ -1,11 +1,7 @@
 # Second Brain — Navigation Map
 
-This folder is the project's "second brain": the source of truth about the
-actual state of architecture, data, patterns, and testing. It's meant to be
-read and updated by AI agents (Claude Code) as well as human developers.
-The policy for when and how to update it lives in
-`.claude/skills/update-second-brain/SKILL.md` — this file only maps *what*
-to read *when*.
+What to read, when — the policy for updating these files lives in
+`.claude/skills/update-second-brain/SKILL.md`.
 
 ## How to find your way around
 

@@ -24,8 +24,3 @@ example_table
 
 State the migration tool used and the naming/versioning convention
 adopted.
-
----
-*Instructions for Claude: update this file whenever tables, columns,
-indexes, constraints, or relationships change. Don't leave the documented
-schema out of sync with the real one.*

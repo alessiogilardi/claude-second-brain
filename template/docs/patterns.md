@@ -16,8 +16,3 @@ them instead of reinventing them.
 
 Document any project-specific naming conventions (for classes, files,
 branches, commits).
-
----
-*Instructions for Claude: add an entry every time you introduce a new or
-recurring pattern in the code, with a concrete example of where it's
-applied.*

@@ -23,8 +23,3 @@ important end-to-end flows of the system.
 
 Refer to the individual entries in [`adr/`](./adr/) for details; here just
 summarize the decisions a newcomer (human or AI) needs to know right away.
-
----
-*Instructions for Claude: when this file is filled in for a real project,
-replace every section with concrete, specific content. Don't leave generic
-placeholders once the real architecture is known.*

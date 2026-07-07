@@ -9,8 +9,3 @@ messages, and discussions about the project.
 | Term | Meaning |
 |---|---|
 | _Example_ | _Short, domain-specific definition._ |
-
----
-*Instructions for Claude: add an entry every time you introduce or come
-across a non-obvious domain term (internal acronyms, business entity names,
-concepts specific to the domain).*

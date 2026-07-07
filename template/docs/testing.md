@@ -14,7 +14,3 @@ State the test framework, the command to run tests, and coverage tools.
 ## Conventions
 
 State where tests live relative to the source code and how they're named.
-
----
-*Instructions for Claude: update this file when the framework, the types
-of tests introduced, coverage policy, or test organization change.*
