@@ -15,19 +15,41 @@ from pathlib import Path
 MARKER = "session_reminder.py"
 
 
-def stop_hook_present(settings: dict) -> bool:
-    for entry in settings.get("hooks", {}).get("Stop", []):
-        for hook in entry.get("hooks", []):
+def find_marker_hook(settings: dict) -> tuple[int, int] | None:
+    """Locate the (Stop-entry index, hook index) of the hook whose
+    command references MARKER, or None if no such hook exists."""
+    for i, entry in enumerate(settings.get("hooks", {}).get("Stop", [])):
+        for j, hook in enumerate(entry.get("hooks", [])):
             if MARKER in hook.get("command", ""):
-                return True
-    return False
+                return i, j
+    return None
 
 
-def merge(template: dict, destination: dict) -> dict:
+def template_marker_command(template: dict) -> str | None:
+    location = find_marker_hook(template)
+    if location is None:
+        return None
+    i, j = location
+    return template["hooks"]["Stop"][i]["hooks"][j].get("command")
+
+
+def merge(template: dict, destination: dict) -> tuple[dict, str]:
     destination.setdefault("hooks", {})
     destination["hooks"].setdefault("Stop", [])
-    destination["hooks"]["Stop"].extend(template.get("hooks", {}).get("Stop", []))
-    return destination
+
+    location = find_marker_hook(destination)
+    if location is None:
+        destination["hooks"]["Stop"].extend(template.get("hooks", {}).get("Stop", []))
+        return destination, "merged"
+
+    i, j = location
+    existing_command = destination["hooks"]["Stop"][i]["hooks"][j].get("command")
+    template_command = template_marker_command(template)
+    if template_command is not None and existing_command != template_command:
+        destination["hooks"]["Stop"][i]["hooks"][j]["command"] = template_command
+        return destination, "updated"
+
+    return destination, "skip-already-present"
 
 
 def main() -> int:
@@ -56,13 +78,12 @@ def main() -> int:
         print(f"[merge_settings] failed to read destination: {exc}", file=sys.stderr)
         return 1
 
-    if stop_hook_present(destination):
-        print("skip-already-present")
-        return 0
-
-    merged = merge(template, destination)
-    args.destination.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
-    print("merged")
+    merged, status = merge(template, destination)
+    if status != "skip-already-present":
+        args.destination.write_text(
+            json.dumps(merged, indent=2) + "\n", encoding="utf-8"
+        )
+    print(status)
     return 0
 
 
