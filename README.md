@@ -14,10 +14,15 @@ claude-second-brain-skill/
 │   │   ├── settings.json                  # wires the Stop-hook end-of-session reminder
 │   │   ├── hooks/
 │   │   │   ├── pre-commit                 # blocks code commits without a docs update
-│   │   │   └── session_reminder.py        # non-blocking end-of-session reminder (uv run)
+│   │   │   └── session_reminder.py        # blocking end-of-session reminder (uv run)
 │   │   └── skills/
-│   │       └── update-second-brain/
-│   │           └── SKILL.md               # skill that updates the documentation
+│   │       ├── update-second-brain/
+│   │       │   └── SKILL.md               # skill that keeps the documentation in sync
+│   │       └── onboard-second-brain/
+│   │           └── SKILL.md               # skill that bootstraps docs/ from placeholders (once)
+│   ├── .github/
+│   │   └── workflows/
+│   │       └── second-brain.yml           # CI backstop, re-checks the PR diff
 │   └── docs/
 │       ├── adr/
 │       │   └── template.md
@@ -49,14 +54,16 @@ project where you want to install the second brain:
 
 The script:
 
-1. creates `.claude/hooks/`, `.claude/skills/update-second-brain/` and
-   `docs/adr/` in the destination project;
+1. creates `.claude/hooks/`, `.claude/skills/update-second-brain/`,
+   `.claude/skills/onboard-second-brain/` and `docs/adr/` in the
+   destination project;
 2. checks whether `uv` is on `PATH`; if not, offers to install it via the
    official installer (interactively, or automatically with `-InstallUv`)
    — `uv` runs the end-of-session reminder hook and the `settings.json`
    merge below, so both are skipped (with a warning) if it stays missing;
-3. copies the contents of `template/docs/` and `template/.claude/` without
-   overwriting files that already exist in the destination project;
+3. copies the contents of `template/docs/`, `template/.claude/` and
+   `template/.github/` without overwriting files that already exist in
+   the destination project;
 4. merges the Stop-hook entry into the destination's
    `.claude/settings.json` via `uv run scripts/merge_settings.py`
    (preserves any hooks/config already there; idempotent re-run);
@@ -71,6 +78,23 @@ The script:
    non-Second-Brain hook already exists at `.git/hooks/pre-commit`, in
    which case it warns and leaves things untouched (pass `-ForceHooksPath`
    to overwrite anyway).
+
+## Enforcement is per-clone, not per-repo
+
+`core.hooksPath` is **local git config** — it lives in `.git/config`, which
+is never committed or cloned. Enforcement of the pre-commit hook only
+exists on machines where `install.ps1` was actually run; a fresh clone, a
+teammate who skipped installation, or a CI runner gets **zero**
+enforcement from the local hook alone, silently.
+
+`template/.github/workflows/second-brain.yml` (copied into the
+destination's `.github/workflows/` by `install.ps1`, same
+never-overwrite rule as everything else) closes that gap: it re-applies
+the same check to the PR diff on GitHub Actions, so it travels with the
+repo and can't be skipped with `--no-verify`. Treat the local hook as
+fast feedback, and the CI workflow as the actual backstop — enable
+Actions on the destination repo (and mark the job required in branch
+protection) if you want it enforced.
 
 ## Requirements
 
