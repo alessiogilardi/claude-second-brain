@@ -68,6 +68,7 @@ $templateClaudeMd = Join-Path $templateRoot "CLAUDE.md"
 $skillsRoot = Join-Path $scriptRoot "skills"
 $hooksRoot = Join-Path $scriptRoot "hooks"
 $workflowsRoot = Join-Path $scriptRoot "workflows"
+$agentsRoot = Join-Path $scriptRoot "agents"
 $mergeSettingsScript = Join-Path $scriptRoot "scripts\merge_settings.py"
 
 if (-not (Test-Path $TargetPath)) {
@@ -173,6 +174,7 @@ if ($Uninstall) {
         ".claude\hooks\session_reminder.py",
         ".claude\skills\update-second-brain\SKILL.md",
         ".claude\skills\onboard-second-brain\SKILL.md",
+        ".claude\agents\second-brain-reader.md",
         ".claude\.second-brain-manifest.json",
         ".github\workflows\second-brain.yml"
     )
@@ -189,6 +191,7 @@ if ($Uninstall) {
         ".claude\skills\onboard-second-brain",
         ".claude\skills",
         ".claude\hooks",
+        ".claude\agents",
         ".github\workflows",
         ".github"
     )
@@ -365,6 +368,7 @@ $foldersToCreate = @(
     (Join-Path $destination ".claude\hooks"),
     (Join-Path $destination ".claude\skills\update-second-brain"),
     (Join-Path $destination ".claude\skills\onboard-second-brain"),
+    (Join-Path $destination ".claude\agents"),
     (Join-Path $destination "docs\adr")
 )
 
@@ -432,11 +436,12 @@ Write-Host "Copying workflows/ (optional CI backstop) ..." -ForegroundColor Cyan
 Copy-WithoutOverwrite -Source $workflowsRoot -Destination (Join-Path $destination ".github\workflows")
 
 # 3b. System-owned .claude files (pre-commit hook, Stop-hook reminder,
-#     skill) are tracked in a manifest and upgraded in place on re-run,
-#     unlike the never-overwrite docs/workflow copy above. settings.json
-#     is merged separately below (step 4), never through this path.
-#     Each entry's source lives under its own top-level package
-#     (hooks/, skills/) while DestRelative is the fixed destination
+#     skills, the second-brain-reader agent) are tracked in a manifest
+#     and upgraded in place on re-run, unlike the never-overwrite
+#     docs/workflow copy above. settings.json is merged separately below
+#     (step 4), never through this path. Each entry's source lives under
+#     its own top-level package (hooks/, skills/, agents/) while
+#     DestRelative is the fixed destination
 #     path Claude Code/git actually require -- the two no longer mirror
 #     each other 1:1.
 Write-Host ""
@@ -454,7 +459,8 @@ if (Test-Path $manifestPath) {
 $systemOwnedFiles = @(
     @{ SourceRoot = $hooksRoot;  RelativeInRoot = "pre-commit";                   DestRelative = ".claude\hooks\pre-commit" },
     @{ SourceRoot = $skillsRoot; RelativeInRoot = "update-second-brain\SKILL.md"; DestRelative = ".claude\skills\update-second-brain\SKILL.md" },
-    @{ SourceRoot = $skillsRoot; RelativeInRoot = "onboard-second-brain\SKILL.md"; DestRelative = ".claude\skills\onboard-second-brain\SKILL.md" }
+    @{ SourceRoot = $skillsRoot; RelativeInRoot = "onboard-second-brain\SKILL.md"; DestRelative = ".claude\skills\onboard-second-brain\SKILL.md" },
+    @{ SourceRoot = $agentsRoot; RelativeInRoot = "second-brain-reader.md";        DestRelative = ".claude\agents\second-brain-reader.md" }
 )
 if ($uvAvailable) {
     $systemOwnedFiles += @{ SourceRoot = $hooksRoot; RelativeInRoot = "session_reminder.py"; DestRelative = ".claude\hooks\session_reminder.py" }

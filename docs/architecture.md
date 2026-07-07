@@ -20,9 +20,9 @@ it installs, which then run *inside* the destination project, not here.
   into the destination's `CLAUDE.md`, and points `core.hooksPath` at
   `.claude/hooks`. Also supports `-Uninstall` (and `-PurgeDocs`) to
   reverse all of the above. Source packages (`skills/`, `hooks/`,
-  `workflows/`) no longer mirror their destination path 1:1 — each is
-  mapped explicitly to its fixed destination (`.claude/skills/`,
-  `.claude/hooks/`, `.github/workflows/`).
+  `workflows/`, `agents/`) no longer mirror their destination path 1:1 —
+  each is mapped explicitly to its fixed destination (`.claude/skills/`,
+  `.claude/hooks/`, `.github/workflows/`, `.claude/agents/`).
 - **`scripts/merge_settings.py`** (Python, run via `uv run`) — merges
   only the Stop-hook entry referencing `session_reminder.py` into a
   destination's `.claude/settings.json`, leaving any other hooks/config
@@ -42,6 +42,11 @@ it installs, which then run *inside* the destination project, not here.
   — the two Claude Code skills that actually read/write `docs/` content:
   `onboard-second-brain` bootstraps a fresh destination's placeholders
   once; `update-second-brain` keeps `docs/` in sync afterward.
+- **`agents/second-brain-reader.md`** — a read-only Claude Code
+  subagent installed into a destination's `.claude/agents/`. Answers
+  questions from `docs/` (conventions, past decisions, domain terms,
+  layout, testing approach) with verbatim quotes instead of the calling
+  model reading the docs itself, to save its context.
 
 ## Main flows
 
@@ -69,4 +74,4 @@ system-owned files vs. never-overwrite for user-owned files, and the
 triple-mirrored `EXCLUDE_PATTERN` enforcement across the local hook, the
 Stop hook, and the CI workflow.
 
-*Last updated: 2026-07-07 — verified against commit `9f70a8a`.*
+*Last updated: 2026-07-07 — verified against commit `f3092ec`.*

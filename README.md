@@ -18,6 +18,8 @@ claude-second-brain-skill/
 │   └── session_reminder.py                  # blocking end-of-session reminder (uv run)
 ├── workflows/                               # complete, non-templated CI workflow
 │   └── second-brain.yml                     # CI backstop, re-checks the PR diff
+├── agents/                                  # complete, non-templated Claude Code subagent(s)
+│   └── second-brain-reader.md               # read-only docs/ retrieval subagent
 ├── template/                                # genuinely template-like content: merged fragments + placeholders
 │   ├── CLAUDE.md                            # block merged into the destination's CLAUDE.md
 │   ├── settings.json                        # wires the Stop-hook end-of-session reminder
@@ -53,8 +55,8 @@ project where you want to install the second brain:
 The script:
 
 1. creates `.claude/hooks/`, `.claude/skills/update-second-brain/`,
-   `.claude/skills/onboard-second-brain/` and `docs/adr/` in the
-   destination project;
+   `.claude/skills/onboard-second-brain/`, `.claude/agents/` and
+   `docs/adr/` in the destination project;
 2. checks whether `uv` is on `PATH`; if not, offers to install it via the
    official installer (interactively, or automatically with `-InstallUv`)
    — `uv` runs the end-of-session reminder hook and the `settings.json`
@@ -62,15 +64,21 @@ The script:
 3. copies the contents of `template/docs/` and `workflows/` (into
    `.github/workflows/`) without overwriting files that already exist in
    the destination project;
-4. merges the Stop-hook entry into the destination's
+4. syncs the system-owned `.claude/` files (`pre-commit` hook, Stop-hook
+   reminder, the two skills, the `second-brain-reader` agent) via a
+   SHA-256 manifest (`.claude/.second-brain-manifest.json`): upgraded in
+   place on re-run as long as the destination's copy is still
+   byte-identical to what the last install wrote, otherwise left alone
+   unless `-Force` is passed;
+5. merges the Stop-hook entry into the destination's
    `.claude/settings.json` via `uv run scripts/merge_settings.py`
    (preserves any hooks/config already there; idempotent re-run);
-5. merges a marker-delimited block (`<!-- BEGIN/END SECOND BRAIN
+6. merges a marker-delimited block (`<!-- BEGIN/END SECOND BRAIN
    SYSTEM -->`) into the destination's `CLAUDE.md`: creates the file if it
    doesn't exist, appends the block if the file exists without touching
    the user's existing content, or updates the block in place if it's
    already present (idempotent re-run);
-6. if the destination is a Git repository, sets `core.hooksPath` to
+7. if the destination is a Git repository, sets `core.hooksPath` to
    `.claude/hooks` to hook up the pre-commit hook — unless
    `core.hooksPath` is already set to something else, or a
    non-Second-Brain hook already exists at `.git/hooks/pre-commit`, in
