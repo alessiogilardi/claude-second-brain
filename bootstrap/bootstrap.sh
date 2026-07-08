@@ -87,9 +87,12 @@ chmod +x ".claude/hooks/pre-commit" 2>/dev/null || true
 
 if git rev-parse --git-dir >/dev/null 2>&1; then
     current="$(git config --get core.hooksPath || true)"
-    legacy=".git/hooks/pre-commit"
+    # Git's default hook location, independent of Second Brain. A destination
+    # repo may already have an unrelated hook manager set up here; don't
+    # silently disable it by repointing core.hooksPath.
+    pre_existing_hook=".git/hooks/pre-commit"
     if [ -z "$current" ]; then
-        if [ -f "$legacy" ] && ! grep -qF "SECOND BRAIN SYSTEM" "$legacy" && [ "$FORCE_HOOKSPATH" = 0 ]; then
+        if [ -f "$pre_existing_hook" ] && ! grep -qF "SECOND BRAIN SYSTEM" "$pre_existing_hook" && [ "$FORCE_HOOKSPATH" = 0 ]; then
             echo "  [WARN] existing .git/hooks/pre-commit is not ours; NOT setting core.hooksPath (re-run with --force-hookspath to override)"
         else
             git config core.hooksPath .claude/hooks
@@ -101,7 +104,7 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
         git config core.hooksPath .claude/hooks
         echo "  [GIT] core.hooksPath overwritten to .claude/hooks (--force-hookspath)"
     else
-        echo "  [WARN] core.hooksPath is '$current' (husky/other?); left untouched (re-run with --force-hookspath to override)"
+        echo "  [WARN] core.hooksPath is '$current' (another hook manager?); left untouched (re-run with --force-hookspath to override)"
     fi
 else
     echo "  [GIT] no git repository here; skipping hook wiring"
