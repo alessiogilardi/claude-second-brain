@@ -2,10 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-<!-- BEGIN SECOND BRAIN SYSTEM (managed by claude-second-brain-skill: do not edit this block by hand, edit template/CLAUDE.md and rerun install.ps1) -->
+<!-- BEGIN SECOND BRAIN SYSTEM (managed by the second-brain plugin: do not edit this block by hand, edit bootstrap/payload/claude-md-block.md and re-run the bootstrap with --refresh-system) -->
 ## Skill: Second Brain
 **Source of Truth:** `docs/` (architecture, ADRs, state).
-**Full Policy:** `.claude/skills/update-second-brain/SKILL.md`
+**Full Policy:** the `update-second-brain` skill.
 
 @docs/README.md
 
@@ -25,39 +25,45 @@ If rejected: 1. Run skill -> 2. Stage docs -> 3. Retry. Never use dummy updates.
 
 ## What this repo is
 
-Not an application — a template/distribution mechanism that injects a
-self-maintaining documentation system ("Second Brain") into *other* Git
-projects via `install.ps1`. There's no runtime service; the only
-"execution" is `install.ps1` itself plus the hooks/skills it installs,
-which then run inside the destination project, not here. This repo also
-dogfoods its own output (`docs/`, `.claude/` at the root are its own
-Second Brain install).
+Not an application — a distribution mechanism for a self-maintaining
+documentation system ("Second Brain") that other Git projects consume.
+Distribution is hybrid: a native Claude Code **plugin** (skills, reader
+agent, Stop hook — served read-only from the plugin cache) plus a
+deterministic git-bash **bootstrap** (`bootstrap/bootstrap.sh`) that
+scaffolds the files which must be committed into the consuming repo
+(`docs/`, the `CLAUDE.md` block, the git pre-commit, the CI workflow).
+There's no runtime service here; the runtime runs inside the consuming
+project. This repo also dogfoods its own output (`docs/`, `.claude/` at
+the root), consumed via the local marketplace.
 
 ## Commands
 
 There is no build step, package manager, or automated test suite (see
 `docs/testing.md`) — verification is manual.
 
-- Install/refresh the system into a project (defaults to the current folder):
-  `.\install.ps1 [TargetPath] [-InstallUv] [-ForceHooksPath] [-Force]`
-- Remove it: `.\install.ps1 [TargetPath] -Uninstall [-PurgeDocs]`
-- Verify a change to `install.ps1`, a hook, or a skill by running
-  `install.ps1` against a scratch destination folder (or re-running it
-  against this repo itself) and inspecting the copied/merged files and
-  hook output by hand.
-- `scripts/merge_settings.py` runs only via `uv run` from inside
-  `install.ps1` — never standalone, never shipped to a destination.
+- Install the plugin: `/plugin marketplace add .` then
+  `/plugin install second-brain@second-brain-marketplace`.
+- Scaffold the repo-side files: `/second-brain-bootstrap` (runs
+  `bootstrap/bootstrap.sh`, create-only). Or directly:
+  `bash bootstrap/bootstrap.sh [TargetPath]`.
+- Refresh the committed system files after a plugin update:
+  `/second-brain-refresh` (runs `bootstrap.sh --refresh-system`).
+- Verify a change by running `bootstrap.sh` against a scratch `git init`
+  folder and asserting create/idempotency/pre-commit/hooksPath/refresh by
+  hand (see `docs/testing.md`).
 
 ## Working in this repo
 
-- Requires Windows + Git for Windows + PowerShell (hooks run through the
-  bundled Bash/MSYS environment) — don't assume a cross-platform shell.
+- Requires git bash (Git for Windows / MSYS or any POSIX bash) — the
+  bootstrap, the Stop hook, and the pre-commit are bash + git only, no
+  `uv`/Python/PowerShell.
 - Read `docs/architecture.md`, `docs/layout.md`, and `docs/patterns.md`
-  before changing `install.ps1` or anything under `hooks/`/`skills/`:
-  the split between byte-for-byte-copied implementation packages
-  (`skills/`, `hooks/`, `workflows/`, upgraded in place via a SHA-256
-  manifest) and mergeable, never-overwritten `template/` content
-  (`CLAUDE.md`, `settings.json`, `docs/`) is load-bearing, not
-  incidental — get it wrong and a destination project's hand-edits get
-  silently clobbered, or a system update silently stops propagating.
+  before changing `bootstrap/` or anything under `hooks/`/`skills/`: the
+  split between plugin-carried runtime (`skills/`, `agents/`, `hooks/`,
+  served read-only from the cache) and the bootstrapped
+  `bootstrap/payload/` content committed into a destination (`docs/`,
+  `CLAUDE.md` block, git pre-commit, CI) is load-bearing, not incidental —
+  get it wrong and a destination's hand-edits get clobbered, or a system
+  update stops propagating. `EXCLUDE_PATTERN` must stay byte-identical
+  across the pre-commit, the Stop hook, and the CI workflow (ADR 0002).
 

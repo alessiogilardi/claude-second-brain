@@ -52,7 +52,7 @@ if [ -n "$source_changed" ] && [ -z "$docs_changed" ]; then
     echo ""
     echo "  Claude, run the update-second-brain skill, then retry the"
     echo "  commit. If this is a false positive or a legitimate exception,"
-    echo "  see .claude/skills/update-second-brain/SKILL.md and use"
+    echo "  see the update-second-brain skill and use"
     echo "  git commit --no-verify."
     echo ""
     echo "=================================================================="

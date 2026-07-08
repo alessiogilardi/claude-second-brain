@@ -4,57 +4,62 @@
 
 ```text
 repo/
-├── install.ps1                  # entry point: injects the Second Brain system into a destination project
-├── scripts/
-│   └── merge_settings.py        # JSON merge helper for .claude/settings.json, used only by install.ps1 (uv run); never copied to a destination
-├── skills/                      # complete, non-templated skill implementations, copied byte-for-byte
+├── .claude-plugin/
+│   ├── plugin.json                 # plugin metadata
+│   └── marketplace.json            # marketplace catalog (source ".")
+├── bootstrap/
+│   ├── bootstrap.sh                # deterministic, create-only repo-side scaffolder
+│   └── payload/                    # content the bootstrap copies into a destination
+│       ├── docs/                       # placeholder doc set + adr/template.md
+│       ├── git-pre-commit              # the git pre-commit hook source
+│       ├── workflows/second-brain.yml  # the CI backstop source
+│       └── claude-md-block.md          # the marker-delimited CLAUDE.md block
+├── hooks/                          # plugin Claude Code hooks (NOT git hooks)
+│   ├── hooks.json                      # wires the Stop event to session-reminder.sh
+│   └── session-reminder.sh             # bash Stop-hook mirror of the pre-commit check
+├── commands/                       # plugin slash commands
+│   ├── second-brain-bootstrap.md       # runs bootstrap.sh
+│   └── second-brain-refresh.md         # runs bootstrap.sh --refresh-system
+├── skills/                         # plugin skills
 │   ├── update-second-brain/SKILL.md
 │   └── onboard-second-brain/SKILL.md
-├── hooks/                       # complete, non-templated hook implementations, copied byte-for-byte
-│   ├── pre-commit                   # blocks a commit missing a matching docs/CLAUDE.md update
-│   └── session_reminder.py          # Stop-hook mirror of the pre-commit check
-├── workflows/                   # complete, non-templated CI workflow, copied byte-for-byte
-│   └── second-brain.yml             # CI backstop mirroring the pre-commit check
-├── agents/                      # complete, non-templated Claude Code subagent(s), copied byte-for-byte
-│   └── second-brain-reader.md       # read-only docs/ retrieval subagent
-├── template/                    # genuinely template-like content: mergeable fragments and placeholders
-│   ├── CLAUDE.md                    # block merged into the destination's CLAUDE.md
-│   ├── settings.json                # Stop-hook wiring, merged (not overwritten) into the destination's settings.json
-│   └── docs/                        # placeholder doc set + adr/template.md shipped to every destination
-├── docs/                        # this repo's own Second Brain (installed via install.ps1 against itself)
-├── .claude/                      # this repo's own installed system-owned files (same dogfooding)
-├── .github/workflows/second-brain.yml
+├── agents/
+│   └── second-brain-reader.md          # read-only docs/ retrieval subagent
+├── docs/                           # this repo's own Second Brain (dogfood)
+├── .claude/
+│   ├── hooks/pre-commit                # this repo's bootstrapped git hook (dogfood)
+│   └── settings.local.json             # per-contributor local config (gitignored)
+├── .github/workflows/second-brain.yml  # this repo's bootstrapped CI (dogfood)
+├── .gitattributes                  # forces LF on shebang'd payload/hook scripts
 ├── CLAUDE.md
 └── README.md
 ```
 
 ## Placement conventions
 
-- Anything meant to run only at install time, and that must **not** ship
-  to a destination project, goes in `scripts/` (currently just
-  `merge_settings.py`).
-- `skills/`, `hooks/`, `workflows/`, and `agents/` hold complete,
-  non-templated implementations copied byte-for-byte into a destination
-  project — they are implementation packages, not template content, so
-  they live at the repo root rather than nested under `template/`.
-  Their destination paths are fixed by Claude Code/GitHub Actions
-  (`.claude/skills/`, `.claude/hooks/`, `.github/workflows/`,
-  `.claude/agents/` respectively) and no longer mirror the source
-  layout 1:1; `install.ps1` maps each source root to its destination
-  path explicitly (see the `$systemOwnedFiles` mapping and the
-  `workflows/` copy step in `install.ps1`).
-- `template/` holds only genuinely template-like content: fragments
-  meant to be merged into a file the destination project already owns
-  (`CLAUDE.md`, `settings.json`) and the placeholder `docs/` set that
-  `onboard-second-brain` fills in per destination.
-- Root-level files outside `template/`, `scripts/`, `skills/`, `hooks/`,
-  `workflows/`, and `agents/` (`install.ps1`, `README.md`) describe or
-  drive the installer itself, not a destination project.
-- `docs/` and `.claude/` at the repo root (this file's own location) are
-  this repo's own Second Brain install — a dogfooding instance of the
-  system the repo distributes, not part of what gets templated out.
+- **Plugin components** live at the repo root where Claude Code
+  auto-discovers them: `.claude-plugin/` (metadata), `skills/`, `agents/`,
+  `hooks/` (Claude Code hooks only), `commands/`. Do not nest these under
+  `.claude-plugin/` — only `plugin.json`/`marketplace.json` go there.
+- **`bootstrap/`** holds the deterministic scaffolder and its `payload/`.
+  It is not a reserved plugin directory, so the plugin loader ignores it;
+  the bootstrap reads its sources from `${CLAUDE_PLUGIN_ROOT}/bootstrap/…`
+  at run time. `payload/` is the single source of truth for every file
+  that must be *committed into a destination repo* (docs scaffold, git
+  pre-commit, CI workflow, CLAUDE.md block).
+- The **git `pre-commit` hook and the CI workflow** live in
+  `bootstrap/payload/` because they must be materialised into the
+  destination working tree (`.claude/hooks/pre-commit` via
+  `core.hooksPath`, `.github/workflows/`); the **Stop hook**
+  (`session-reminder.sh`) lives in `hooks/` because a plugin serves it
+  read-only from its cache.
+- **`docs/` and `.claude/` at the repo root** are this repo's own Second
+  Brain — a dogfooding instance, consumed via the local marketplace, not
+  part of what gets distributed. `.claude/` keeps only the bootstrapped
+  `pre-commit` and the gitignored `settings.local.json`; the runtime
+  (skills, agent, Stop hook) comes from the installed plugin, not from
+  `.claude/`.
 - `.gitignore` excludes `.claude/settings.local.json` and `.vscode/`:
-  per-contributor local config (personal Claude Code settings, personal
-  editor settings), never shared through the repo.
+  per-contributor local config, never shared through the repo.
 
-*Last updated: 2026-07-07 — verified against commit `79c2ce3`.*
+*Last updated: 2026-07-08 — verified against commit `b595503`.*

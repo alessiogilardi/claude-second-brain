@@ -1,12 +1,12 @@
 # [SECOND BRAIN SYSTEM] CI backstop.
 #
 # .claude/hooks/pre-commit only runs on machines where core.hooksPath was
-# set up by install.ps1 -- that's local git config, so it isn't cloned
-# and can be skipped entirely (missing install, or plain --no-verify).
-# This workflow re-applies the same syntactic check to the PR diff so a
-# missing/bypassed local hook doesn't mean zero enforcement. Keep
-# EXCLUDE_PATTERN mirrored with .claude/hooks/pre-commit and
-# .claude/hooks/session_reminder.py.
+# set up by the bootstrap script -- that's local git config, so it isn't
+# cloned and can be skipped entirely (missing bootstrap, or plain
+# --no-verify). This workflow re-applies the same syntactic check to the
+# PR diff so a missing/bypassed local hook doesn't mean zero enforcement.
+# Keep EXCLUDE_PATTERN mirrored with .claude/hooks/pre-commit and the
+# second-brain plugin's session-reminder.sh.
 name: Second Brain docs check
 
 on:

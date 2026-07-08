@@ -1,7 +1,7 @@
 # Second Brain — Navigation Map
 
-What to read, when — the policy for updating these files lives in
-`.claude/skills/update-second-brain/SKILL.md`.
+What to read, when — the policy for updating these files lives in the
+`update-second-brain` skill.
 
 ## How to find your way around
 

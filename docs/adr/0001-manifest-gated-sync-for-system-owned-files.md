@@ -2,7 +2,16 @@
 
 ## Status
 
-Proposed
+Superseded by [ADR 0003](./0003-hybrid-plugin-plus-bootstrap-distribution.md).
+
+The manifest-gated sync described here was a property of `install.ps1`,
+which the plugin migration removed. Runtime system files (skills, agent,
+Stop hook) are now served read-only from the plugin cache and upgraded via
+`/plugin marketplace update`; the three *committed* system files (git
+pre-commit, CI workflow, CLAUDE.md block) use `bootstrap.sh`'s create-only
+default plus the opt-in `--refresh-system` overwrite. The SHA-256 manifest
+(`.claude/.second-brain-manifest.json`) no longer exists. The record below
+is kept for the history of *why* the manifest approach was chosen.
 
 ## Context
 
@@ -59,4 +68,4 @@ strategies:
   losing or hand-editing it degrades detection to "assume hand-edited,
   skip" for any file with no recorded hash.
 
-*Last updated: 2026-07-07 — verified against commit `9ea2b62`.*
+*Last updated: 2026-07-08 — verified against commit `b595503`.*

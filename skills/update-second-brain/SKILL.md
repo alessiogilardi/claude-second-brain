@@ -79,8 +79,9 @@ or as an end-of-session check:
 1. **Gather evidence.** Run `git status --porcelain` to get the real list
    of changed files — staged, unstaged, **and untracked** — never rely on
    memory of what "felt like" a big change. This is the same source of
-   truth the Stop hook uses (`session_reminder.py`), so the skill and the
-   hook never disagree about what counts as "changed"; a brand-new,
+   truth the Stop hook uses (the second-brain plugin's
+   `session-reminder.sh`), so the skill and the hook never disagree about
+   what counts as "changed"; a brand-new,
    not-yet-`git add`-ed file (a new module, migration, etc.) would
    otherwise be invisible to this step. Use `git diff HEAD --stat` only
    for the lines-changed detail on files `git status` already flagged,
@@ -129,8 +130,8 @@ or as an end-of-session check:
 ## Hook exclusions and legitimate bypasses
 
 The pre-commit hook (`.claude/hooks/pre-commit`) and its two mirrors —
-the Stop hook (`.claude/hooks/session_reminder.py`) and the CI backstop
-(`.github/workflows/second-brain.yml`) — all decide whether "source
+the Stop hook (the second-brain plugin's `session-reminder.sh`) and the
+CI backstop (`.github/workflows/second-brain.yml`) — all decide whether "source
 changed" using the same `EXCLUDE_PATTERN`: it skips lockfiles (`*.lock`,
 `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`,
 `uv.lock`, `Cargo.lock`, `Gemfile.lock`), `.github/`, `.claude/`, and

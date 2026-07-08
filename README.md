@@ -1,140 +1,123 @@
 # claude-second-brain-skill
 
-Template repository for exporting the **"Second Brain"** documentation
+A Claude Code **plugin** that exports the **"Second Brain"** documentation
 system to other projects: a `docs/` structure kept in sync with the code
-via a Claude Code skill and a pre-commit git hook.
+via two skills, a git `pre-commit` hook, and a CI backstop. The plugin
+carries the runtime; a deterministic git-bash **bootstrap** scaffolds the
+files that must be committed into the consuming repo.
 
 ## What's in here
 
 ```text
 claude-second-brain-skill/
-├── skills/                                 # complete, non-templated skill implementations
-│   ├── update-second-brain/
-│   │   └── SKILL.md                        # skill that keeps the documentation in sync
-│   └── onboard-second-brain/
-│       └── SKILL.md                        # skill that bootstraps docs/ from placeholders (once)
-├── hooks/                                   # complete, non-templated hook implementations
-│   ├── pre-commit                           # blocks code commits without a docs update
-│   └── session_reminder.py                  # blocking end-of-session reminder (uv run)
-├── workflows/                               # complete, non-templated CI workflow
-│   └── second-brain.yml                     # CI backstop, re-checks the PR diff
-├── agents/                                  # complete, non-templated Claude Code subagent(s)
-│   └── second-brain-reader.md               # read-only docs/ retrieval subagent
-├── template/                                # genuinely template-like content: merged fragments + placeholders
-│   ├── CLAUDE.md                            # block merged into the destination's CLAUDE.md
-│   ├── settings.json                        # wires the Stop-hook end-of-session reminder
-│   └── docs/
-│       ├── adr/
-│       │   └── template.md
-│       ├── README.md
-│       ├── architecture.md
-│       ├── database.md
-│       ├── glossary.md
-│       ├── layout.md
-│       ├── patterns.md
-│       └── testing.md
-├── scripts/
-│   └── merge_settings.py                   # used only by install.ps1, not copied to destination
-├── install.ps1                             # injection script for the destination project
+├── .claude-plugin/
+│   ├── plugin.json                 # plugin metadata
+│   └── marketplace.json            # marketplace catalog (source ".")
+├── bootstrap/
+│   ├── bootstrap.sh                # deterministic, create-only repo-side scaffolder
+│   └── payload/                    # files the bootstrap copies into a destination
+│       ├── docs/                       # placeholder doc set + adr/template.md
+│       ├── git-pre-commit              # the git pre-commit hook source
+│       ├── workflows/second-brain.yml  # the CI backstop source
+│       └── claude-md-block.md          # the marker-delimited CLAUDE.md block
+├── hooks/
+│   ├── hooks.json                  # wires the Stop event to session-reminder.sh
+│   └── session-reminder.sh         # bash Stop-hook mirror of the pre-commit check
+├── commands/
+│   ├── second-brain-bootstrap.md   # /second-brain-bootstrap  -> bootstrap.sh
+│   └── second-brain-refresh.md     # /second-brain-refresh     -> bootstrap.sh --refresh-system
+├── skills/
+│   ├── update-second-brain/SKILL.md    # keeps docs/ in sync with the code
+│   └── onboard-second-brain/SKILL.md   # bootstraps docs/ from placeholders (once)
+├── agents/
+│   └── second-brain-reader.md      # read-only docs/ retrieval subagent
 └── README.md
 ```
 
 ## How to use it
 
-From this repository, run `install.ps1` pointing at the folder of the
-project where you want to install the second brain:
+**1. Install the plugin.** Add this repo as a marketplace and install:
 
-```powershell
-# Install into the current folder (default)
-.\install.ps1
-
-# Install into another project
-.\install.ps1 ..\MyProject
+```
+/plugin marketplace add <path-or-git-url-of-this-repo>
+/plugin install second-brain@second-brain-marketplace
 ```
 
-The script:
+This makes the skills, the `second-brain-reader` agent, and the
+end-of-session Stop hook available. Nothing is written into your project
+yet — a plugin is read-only and external to your repo.
 
-1. creates `.claude/hooks/`, `.claude/skills/update-second-brain/`,
-   `.claude/skills/onboard-second-brain/`, `.claude/agents/` and
-   `docs/adr/` in the destination project;
-2. checks whether `uv` is on `PATH`; if not, offers to install it via the
-   official installer (interactively, or automatically with `-InstallUv`)
-   — `uv` runs the end-of-session reminder hook and the `settings.json`
-   merge below, so both are skipped (with a warning) if it stays missing;
-3. copies the contents of `template/docs/` and `workflows/` (into
-   `.github/workflows/`) without overwriting files that already exist in
-   the destination project;
-4. syncs the system-owned `.claude/` files (`pre-commit` hook, Stop-hook
-   reminder, the two skills, the `second-brain-reader` agent) via a
-   SHA-256 manifest (`.claude/.second-brain-manifest.json`): upgraded in
-   place on re-run as long as the destination's copy is still
-   byte-identical to what the last install wrote, otherwise left alone
-   unless `-Force` is passed;
-5. merges the Stop-hook entry into the destination's
-   `.claude/settings.json` via `uv run scripts/merge_settings.py`
-   (preserves any hooks/config already there; idempotent re-run);
-6. merges a marker-delimited block (`<!-- BEGIN/END SECOND BRAIN
-   SYSTEM -->`) into the destination's `CLAUDE.md`: creates the file if it
-   doesn't exist, appends the block if the file exists without touching
-   the user's existing content, or updates the block in place if it's
-   already present (idempotent re-run);
-7. if the destination is a Git repository, sets `core.hooksPath` to
-   `.claude/hooks` to hook up the pre-commit hook — unless
-   `core.hooksPath` is already set to something else, or a
-   non-Second-Brain hook already exists at `.git/hooks/pre-commit`, in
-   which case it warns and leaves things untouched (pass `-ForceHooksPath`
-   to overwrite anyway).
+**2. Bootstrap the repo-side files.** From inside the target project, run:
 
-**Recommended:** run the `onboard-second-brain` skill right after
-installing, before the first commit. Otherwise the one-time bootstrap
-(replacing every `docs/*.md` placeholder with real content) gets
-triggered mid-commit the first time the pre-commit hook rejects a source
-change with no matching docs update — correct, but the worst possible
-moment to pay that cost on a large repo.
+```
+/second-brain-bootstrap
+```
+
+It runs `bootstrap/bootstrap.sh` (you can also call
+`bash bootstrap/bootstrap.sh [TargetPath]` directly), which **create-only**:
+
+1. scaffolds the `docs/` set (placeholders + `adr/template.md`) — never
+   overwriting an existing file;
+2. appends the marker-delimited block (`<!-- BEGIN/END SECOND BRAIN
+   SYSTEM -->`) to `CLAUDE.md` if it isn't already present, leaving your
+   own content untouched;
+3. installs `.claude/hooks/pre-commit` and points `core.hooksPath` at
+   `.claude/hooks` — unless a foreign `core.hooksPath` (e.g. husky) is
+   already set, in which case it warns and leaves it (pass
+   `--force-hookspath` to override);
+4. copies the CI workflow to `.github/workflows/second-brain.yml`.
+
+It never overwrites and never deletes, so an accidental re-run is a no-op.
+
+**3. Onboard (once).** Run the `onboard-second-brain` skill before your
+first commit, to replace every `docs/*.md` placeholder with real content.
+Otherwise the one-time bootstrap gets triggered mid-commit the first time
+the pre-commit hook rejects a source change with no matching docs update —
+correct, but the worst moment to pay that cost on a large repo.
+
+**Updating.** When a new plugin version ships, `/plugin marketplace update`
+refreshes the skills/agent/Stop hook automatically. To refresh the three
+*committed* system files (git pre-commit, CI workflow, `CLAUDE.md` block
+between its markers) run `/second-brain-refresh` — it overwrites only those
+and never touches `docs/` or your own prose.
 
 ## Enforcement is per-clone, not per-repo
 
 `core.hooksPath` is **local git config** — it lives in `.git/config`, which
 is never committed or cloned. Enforcement of the pre-commit hook only
-exists on machines where `install.ps1` was actually run; a fresh clone, a
-teammate who skipped installation, or a CI runner gets **zero**
-enforcement from the local hook alone, silently.
+exists on machines where the bootstrap was actually run; a fresh clone, a
+teammate who skipped it, or a CI runner gets **zero** enforcement from the
+local hook alone, silently.
 
-`workflows/second-brain.yml` (copied into the
-destination's `.github/workflows/` by `install.ps1`, same
-never-overwrite rule as everything else) closes that gap: it re-applies
-the same check to the PR diff on GitHub Actions, so it travels with the
-repo and can't be skipped with `--no-verify`. Treat the local hook as
-fast feedback, and the CI workflow as the actual backstop — enable
-Actions on the destination repo (and mark the job required in branch
-protection) if you want it enforced.
+`.github/workflows/second-brain.yml` (scaffolded into the destination by
+the bootstrap) closes that gap: it re-applies the same check to the PR diff
+on GitHub Actions, so it travels with the repo and can't be skipped with
+`--no-verify`. Treat the local hook as fast feedback and the CI workflow as
+the actual backstop — enable Actions on the destination repo (and mark the
+job required in branch protection) to enforce it.
 
 ## Requirements
 
-- Windows with Git for Windows (hooks run through the Bash/MSYS environment
-  bundled with Git for Windows).
-- PowerShell 5.1+ or PowerShell 7+.
-- [uv](https://docs.astral.sh/uv/getting-started/installation/) — used to
-  run the end-of-session reminder hook (`.claude/hooks/session_reminder.py`)
-  and to merge `.claude/settings.json` during installation. If it's
-  missing, `install.ps1` offers to install it automatically on Windows.
+- **git bash** — Git for Windows / MSYS, or any POSIX `bash` on
+  macOS/Linux. The bootstrap, the pre-commit hook, and the Stop hook are
+  `bash` + `git` only; there is no `uv`, Python, or PowerShell dependency.
+- **Claude Code** with plugin support (`/plugin`).
 
 ## Customizing the pre-commit hook
 
 `.claude/hooks/pre-commit` is a syntactic check, not a semantic one: it
 only verifies that *some* file under `docs/` or `CLAUDE.md` was staged
-alongside source changes. The `EXCLUDE_PATTERN` variable at the top of the
-file (already copied into the destination project, no templating happens
-here) lists paths ignored when deciding whether "source changed" — add
-more lockfiles, generated files, or vendored paths there if the default
-set (tests, CI, common lockfiles, `.claude/`) doesn't fit the project.
+alongside source changes. The `EXCLUDE_PATTERN` variable at the top lists
+paths ignored when deciding whether "source changed" — add more lockfiles,
+generated files, or vendored paths there if the default set (tests, CI,
+common lockfiles, `.claude/`) doesn't fit the project. If you change it,
+keep it byte-identical across the three mirrors (the pre-commit, the
+plugin's `session-reminder.sh`, and the CI workflow — see ADR 0002).
 Bypassing with `git commit --no-verify` is legitimate for a WIP commit on
-a private branch you'll squash later, or for a doc-only commit you're
-about to make immediately after — don't touch `docs/` just to satisfy the
-hook ("doc-touch"); see
-`.claude/skills/update-second-brain/SKILL.md` for the full policy.
+a private branch you'll squash later, or a doc-only follow-up commit — don't
+touch `docs/` just to satisfy the hook ("doc-touch"); see the
+`update-second-brain` skill for the full policy.
 
-If a destination project is ever copied to macOS/Linux, the hook scripts
-are provided without the POSIX executable bit; run
-`chmod +x .claude/hooks/pre-commit` yourself first (this template targets
-Windows/Git for Windows, so `install.ps1` doesn't do this for you).
+On a non-Windows clone the hook scripts may lack the POSIX executable bit;
+Git for Windows runs them via `sh` regardless, but elsewhere run
+`chmod +x .claude/hooks/pre-commit` if needed.

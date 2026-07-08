@@ -20,9 +20,8 @@ Brain has real content to describe) and replaces the generic
 placeholders shipped by the template with the actual state of this
 codebase. It owns the *bootstrap* procedure only — the ongoing policy
 (memory routing, freshness footer format, ADR numbering, what not to
-write) is not repeated here; it lives in
-`.claude/skills/update-second-brain/SKILL.md` and applies unchanged from
-the moment onboarding finishes.
+write) is not repeated here; it lives in the `update-second-brain` skill
+and applies unchanged from the moment onboarding finishes.
 
 ## When this skill is done
 
