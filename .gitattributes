@@ -1,0 +1,6 @@
+# Shell/hook payloads must stay LF: CRLF breaks the #!/usr/bin/env bash and
+# #!/bin/sh shebangs when the file is executed under Git Bash / MSYS.
+*.sh              text eol=lf
+bootstrap/payload/git-pre-commit  text eol=lf
+bootstrap/payload/**              text eol=lf
+hooks/**                          text eol=lf

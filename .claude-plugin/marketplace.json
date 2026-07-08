@@ -1,0 +1,7 @@
+{
+  "name": "second-brain-marketplace",
+  "owner": { "name": "Alessio Gilardi" },
+  "plugins": [
+    { "name": "second-brain", "source": "." }
+  ]
+}
