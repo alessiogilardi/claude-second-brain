@@ -9,8 +9,8 @@ projects consume. There is no runtime service here; distribution is
 
 1. a native **Claude Code plugin** (marketplace-distributed, cached
    read-only in `~/.claude/plugins/`, external to the consuming repo) that
-   carries the runtime: the two skills, the reader agent, and the
-   end-of-session Stop hook;
+   carries the runtime: the two skills, the reader agent, the
+   end-of-session Stop hook, and a session-start bootstrap nudge;
 2. a deterministic **git-bash bootstrap** (`bootstrap/bootstrap.sh`,
    shipped inside the plugin) that scaffolds the files which *must* be
    committed into the consuming repo's working tree — the `docs/` set, the
@@ -44,6 +44,14 @@ lives in the plugin; everything that must be committed is bootstrapped.
   (bash, no `uv`/Python/`jq`) mirrors the pre-commit exclusion logic and
   reports uncommitted drift via the `{"decision":"block",…}` contract,
   guarded against looping by `stop_hook_active`.
+- **`hooks/hooks.json` + `hooks/bootstrap-reminder.sh`** — the plugin's
+  `SessionStart` hook (matcher `"startup"`). There is no plugin
+  post-install lifecycle event in Claude Code, so this is the closest
+  available substitute: on every fresh session it checks for the
+  `<!-- BEGIN SECOND BRAIN SYSTEM` marker in `CLAUDE.md` — the exact
+  marker `bootstrap.sh` itself checks — and, if absent, prints a plain
+  stdout reminder to run `/second-brain:bootstrap`. It nudges only; it
+  never runs the bootstrap itself (see ADR 0004).
 - **`commands/bootstrap.md` / `refresh.md`** — slash commands
   (`/second-brain:bootstrap`, `/second-brain:refresh`) that run
   `bootstrap.sh` (the second with `--refresh-system`). The command
@@ -66,8 +74,10 @@ plugin/repo boundary (see ADR 0002).
 
 1. **Install the plugin** — `/plugin marketplace add <repo-or-git-source>`
    then `/plugin install second-brain@second-brain-marketplace`. The
-   skills, reader agent, and Stop hook become available; nothing is written
-   into the project working tree yet.
+   skills, reader agent, Stop hook, and SessionStart nudge become
+   available; nothing is written into the project working tree yet. From
+   the next fresh session in any repo lacking the `CLAUDE.md` marker, the
+   SessionStart hook reminds the model to bootstrap.
 2. **Bootstrap the repo** — run `/second-brain:bootstrap` (which runs
    `bootstrap.sh`). Create-only: scaffolds `docs/`, appends the `CLAUDE.md`
    block, installs the git `pre-commit` + `core.hooksPath`, and copies the
@@ -86,6 +96,9 @@ plugin/repo boundary (see ADR 0002).
 
 ## Relevant architectural decisions
 
+- [ADR 0004](./adr/0004-sessionstart-bootstrap-nudge.md) — nudge, not
+  enforce: a `SessionStart` hook reminds instead of auto-running the
+  bootstrap, since Claude Code has no post-install lifecycle event.
 - [ADR 0003](./adr/0003-hybrid-plugin-plus-bootstrap-distribution.md) —
   hybrid plugin + deterministic bootstrap distribution (supersedes 0001).
 - [ADR 0002](./adr/0002-triple-mirrored-enforcement.md) — triple-mirrored
@@ -93,4 +106,4 @@ plugin/repo boundary (see ADR 0002).
 - [ADR 0001](./adr/0001-manifest-gated-sync-for-system-owned-files.md) —
   the previous SHA-256-manifest install strategy, **superseded by 0003**.
 
-*Last updated: 2026-07-09 — verified against commit `94be0ce`.*
+*Last updated: 2026-07-09 — verified against commit `4e50f09`.*

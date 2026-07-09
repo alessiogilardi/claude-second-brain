@@ -10,12 +10,13 @@
 | Triple-mirrored enforcement | `EXCLUDE_PATTERN` duplicated verbatim across `bootstrap/payload/git-pre-commit`, `hooks/session-reminder.sh`, and `bootstrap/payload/workflows/second-brain.yml` | `core.hooksPath` is local git config, never cloned — a single local hook gives zero enforcement on a fresh clone or a skipped bootstrap, so the same syntactic check is repeated at three points (local hook, Stop hook, CI). See ADR 0002. |
 | Plugin-carried runtime vs. bootstrapped repo files | skills/agent/Stop hook are served read-only from the plugin cache; `docs/`, the `CLAUDE.md` block, the git pre-commit, and the CI workflow are committed into the destination working tree | A plugin cannot write the working tree; the committed files must survive fresh clones, non-installers, and CI. This boundary is the core of the design (ADR 0003). |
 | Dependency-free hooks | `hooks/session-reminder.sh` and `bootstrap/payload/git-pre-commit` are bash + git only (no `uv`, Python, or `jq`) | The plugin needs only bash + git; it also tightens the ADR-0002 mirror to shell in all three files, so the shared `EXCLUDE_PATTERN` is a byte-identical string everywhere. |
+| Nudge, don't enforce, at session start | `hooks/bootstrap-reminder.sh` (`SessionStart`, matcher `"startup"`) checks for the same `<!-- BEGIN SECOND BRAIN SYSTEM` marker `bootstrap.sh` checks, and prints a plain-stdout reminder if absent — it never runs the bootstrap itself | Claude Code has no plugin post-install lifecycle event, so a hook is the closest substitute; auto-writing into a repo's working tree on every session start would be surprising and contradicts the bootstrap's own create-only, non-destructive philosophy. See ADR 0004. |
 
 ## Naming conventions
 
 - Bash scripts: kebab-case with a `.sh` extension (`session-reminder.sh`,
-  `bootstrap.sh`); the bootstrapped git hook is the extensionless
-  `pre-commit` (git requires that exact name).
+  `bootstrap-reminder.sh`, `bootstrap.sh`); the bootstrapped git hook is
+  the extensionless `pre-commit` (git requires that exact name).
 - Skill directories: kebab-case matching the skill's `name:` frontmatter
   field (`onboard`, `update`); the file inside is always `SKILL.md`.
 - Slash commands: `commands/<name>.md`, kebab-case, with a `description`
@@ -31,4 +32,4 @@
 - ADR files: `NNNN-*.md`, zero-padded to 4 digits (see the
   `second-brain:update` skill's "ADR numbering").
 
-*Last updated: 2026-07-09 — verified against commit `94be0ce`.*
+*Last updated: 2026-07-09 — verified against commit `4e50f09`.*

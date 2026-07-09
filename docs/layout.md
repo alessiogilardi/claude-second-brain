@@ -15,8 +15,9 @@ repo/
 │       ├── workflows/second-brain.yml  # the CI backstop source
 │       └── claude-md-block.md          # the marker-delimited CLAUDE.md block
 ├── hooks/                          # plugin Claude Code hooks (NOT git hooks)
-│   ├── hooks.json                      # wires the Stop event to session-reminder.sh
-│   └── session-reminder.sh             # bash Stop-hook mirror of the pre-commit check
+│   ├── hooks.json                      # wires Stop -> session-reminder.sh, SessionStart -> bootstrap-reminder.sh
+│   ├── session-reminder.sh             # bash Stop-hook mirror of the pre-commit check
+│   └── bootstrap-reminder.sh           # bash SessionStart nudge: reminds if not yet bootstrapped
 ├── commands/                       # plugin slash commands
 │   ├── bootstrap.md                    # /second-brain:bootstrap -> bootstrap.sh
 │   └── refresh.md                      # /second-brain:refresh -> bootstrap.sh --refresh-system
@@ -51,8 +52,10 @@ repo/
   `bootstrap/payload/` because they must be materialised into the
   destination working tree (`.claude/hooks/pre-commit` via
   `core.hooksPath`, `.github/workflows/`); the **Stop hook**
-  (`session-reminder.sh`) lives in `hooks/` because a plugin serves it
-  read-only from its cache.
+  (`session-reminder.sh`) and the **SessionStart hook**
+  (`bootstrap-reminder.sh`) live in `hooks/` because a plugin serves them
+  read-only from its cache — neither needs anything bootstrap produces to
+  run.
 - **`docs/` and `.claude/` at the repo root** are this repo's own Second
   Brain — a dogfooding instance, consumed via the local marketplace, not
   part of what gets distributed. `.claude/` keeps only the bootstrapped
@@ -62,4 +65,4 @@ repo/
 - `.gitignore` excludes `.claude/settings.local.json` and `.vscode/`:
   per-contributor local config, never shared through the repo.
 
-*Last updated: 2026-07-09 — verified against commit `94be0ce`.*
+*Last updated: 2026-07-09 — verified against commit `4e50f09`.*

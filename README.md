@@ -21,8 +21,9 @@ claude-second-brain-skill/
 │       ├── workflows/second-brain.yml  # the CI backstop source
 │       └── claude-md-block.md          # the marker-delimited CLAUDE.md block
 ├── hooks/
-│   ├── hooks.json                  # wires the Stop event to session-reminder.sh
-│   └── session-reminder.sh         # bash Stop-hook mirror of the pre-commit check
+│   ├── hooks.json                  # wires Stop -> session-reminder.sh, SessionStart -> bootstrap-reminder.sh
+│   ├── session-reminder.sh         # bash Stop-hook mirror of the pre-commit check
+│   └── bootstrap-reminder.sh       # bash SessionStart nudge: reminds if not yet bootstrapped
 ├── commands/
 │   ├── bootstrap.md                 # /second-brain:bootstrap -> bootstrap.sh
 │   └── refresh.md                   # /second-brain:refresh   -> bootstrap.sh --refresh-system
@@ -43,9 +44,14 @@ claude-second-brain-skill/
 /plugin install second-brain@second-brain-marketplace
 ```
 
-This makes the skills, the `second-brain-reader` agent, and the
-end-of-session Stop hook available. Nothing is written into your project
-yet — a plugin is read-only and external to your repo.
+This makes the skills, the `second-brain-reader` agent, the
+end-of-session Stop hook, and a `SessionStart` bootstrap reminder
+available. Nothing is written into your project yet — a plugin is
+read-only and external to your repo. There is no plugin post-install
+hook in Claude Code, so the `SessionStart` reminder is the closest
+substitute: on your next fresh session in a repo that hasn't been
+bootstrapped, it nudges the model to run `/second-brain:bootstrap` (see
+[ADR 0004](./docs/adr/0004-sessionstart-bootstrap-nudge.md)).
 
 **2. Bootstrap the repo-side files.** From inside the target project, run:
 
