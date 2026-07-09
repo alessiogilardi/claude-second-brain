@@ -40,6 +40,6 @@ jobs:
           source_changed=$(printf '%s\n' "$relevant_files" | grep -vE '^docs/|^CLAUDE\.md$' || true)
 
           if [ -n "$source_changed" ] && [ -z "$docs_changed" ]; then
-            echo "::error::[SECOND BRAIN SYSTEM] This PR changes source code but no file under docs/ or CLAUDE.md. Run the update-second-brain skill and push a docs update, or note in the PR description why this change doesn't need one."
+            echo "::error::[SECOND BRAIN SYSTEM] This PR changes source code but no file under docs/ or CLAUDE.md. Run the second-brain:update skill and push a docs update, or note in the PR description why this change doesn't need one."
             exit 1
           fi

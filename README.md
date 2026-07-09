@@ -24,11 +24,11 @@ claude-second-brain-skill/
 │   ├── hooks.json                  # wires the Stop event to session-reminder.sh
 │   └── session-reminder.sh         # bash Stop-hook mirror of the pre-commit check
 ├── commands/
-│   ├── second-brain-bootstrap.md   # /second-brain-bootstrap  -> bootstrap.sh
-│   └── second-brain-refresh.md     # /second-brain-refresh     -> bootstrap.sh --refresh-system
+│   ├── bootstrap.md                 # /second-brain:bootstrap -> bootstrap.sh
+│   └── refresh.md                   # /second-brain:refresh   -> bootstrap.sh --refresh-system
 ├── skills/
-│   ├── update-second-brain/SKILL.md    # keeps docs/ in sync with the code
-│   └── onboard-second-brain/SKILL.md   # bootstraps docs/ from placeholders (once)
+│   ├── update/SKILL.md              # second-brain:update  -- keeps docs/ in sync with the code
+│   └── onboard/SKILL.md             # second-brain:onboard -- bootstraps docs/ from placeholders (once)
 ├── agents/
 │   └── second-brain-reader.md      # read-only docs/ retrieval subagent
 └── README.md
@@ -50,7 +50,7 @@ yet — a plugin is read-only and external to your repo.
 **2. Bootstrap the repo-side files.** From inside the target project, run:
 
 ```
-/second-brain-bootstrap
+/second-brain:bootstrap
 ```
 
 It runs `bootstrap/bootstrap.sh` (you can also call
@@ -69,7 +69,7 @@ It runs `bootstrap/bootstrap.sh` (you can also call
 
 It never overwrites and never deletes, so an accidental re-run is a no-op.
 
-**3. Onboard (once).** Run the `onboard-second-brain` skill before your
+**3. Onboard (once).** Run the `second-brain:onboard` skill before your
 first commit, to replace every `docs/*.md` placeholder with real content.
 Otherwise the one-time bootstrap gets triggered mid-commit the first time
 the pre-commit hook rejects a source change with no matching docs update —
@@ -78,7 +78,7 @@ correct, but the worst moment to pay that cost on a large repo.
 **Updating.** When a new plugin version ships, `/plugin marketplace update`
 refreshes the skills/agent/Stop hook automatically. To refresh the three
 *committed* system files (git pre-commit, CI workflow, `CLAUDE.md` block
-between its markers) run `/second-brain-refresh` — it overwrites only those
+between its markers) run `/second-brain:refresh` — it overwrites only those
 and never touches `docs/` or your own prose.
 
 ## Enforcement is per-clone, not per-repo
@@ -116,7 +116,7 @@ plugin's `session-reminder.sh`, and the CI workflow — see ADR 0002).
 Bypassing with `git commit --no-verify` is legitimate for a WIP commit on
 a private branch you'll squash later, or a doc-only follow-up commit — don't
 touch `docs/` just to satisfy the hook ("doc-touch"); see the
-`update-second-brain` skill for the full policy.
+`second-brain:update` skill for the full policy.
 
 On a non-Windows clone the hook scripts may lack the POSIX executable bit;
 Git for Windows runs them via `sh` regardless, but elsewhere run

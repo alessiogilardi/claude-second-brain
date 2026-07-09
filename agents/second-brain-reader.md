@@ -11,7 +11,7 @@ description: >
   "why was Y decided", "what does term Z mean", "where does new code
   for W belong", "what's our testing approach for V". Do NOT use for:
   reading or reviewing source code, code review, updating/writing docs
-  (use the update-second-brain or onboard-second-brain skill for that),
+  (use the second-brain:update or second-brain:onboard skill for that),
   or fetching external/web documentation.
 tools: Read, Glob, Grep
 model: haiku

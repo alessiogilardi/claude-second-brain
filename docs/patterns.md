@@ -17,14 +17,18 @@
   `bootstrap.sh`); the bootstrapped git hook is the extensionless
   `pre-commit` (git requires that exact name).
 - Skill directories: kebab-case matching the skill's `name:` frontmatter
-  field (`onboard-second-brain`, `update-second-brain`); the file inside is
-  always `SKILL.md`.
+  field (`onboard`, `update`); the file inside is always `SKILL.md`.
 - Slash commands: `commands/<name>.md`, kebab-case, with a `description`
   frontmatter field; the body runs the script via a leading `!`.
+- Don't repeat the plugin name (`second-brain`) inside a command or skill
+  filename/`name:` field — Claude Code already namespaces plugin-carried
+  commands and skills as `second-brain:<name>` at invocation time
+  (`/second-brain:bootstrap`, `second-brain:update`), so a name like
+  `second-brain-bootstrap` would read as `second-brain:second-brain-bootstrap`.
 - Agent files: kebab-case filename matching the agent's `name:` frontmatter
   field (`second-brain-reader.md`); no wrapping directory — Claude Code
   discovers agents as flat files under `agents/`.
 - ADR files: `NNNN-*.md`, zero-padded to 4 digits (see the
-  `update-second-brain` skill's "ADR numbering").
+  `second-brain:update` skill's "ADR numbering").
 
-*Last updated: 2026-07-08 — verified against commit `b595503`.*
+*Last updated: 2026-07-09 — verified against commit `94be0ce`.*

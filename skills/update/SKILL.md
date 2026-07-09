@@ -1,5 +1,5 @@
 ---
-name: update-second-brain
+name: update
 description: >
   Updates the project's "Second Brain" documentation under docs/ (e.g.
   architecture.md, database.md, patterns.md, glossary.md, layout.md,
@@ -69,7 +69,7 @@ vice versa): pick one home per fact.
 If any file under `docs/` still carries the `> Placeholder` marker
 (grep this ASCII-safe prefix, not the full em-dash text — re-encoding
 can silently corrupt `—` and hide the marker from a literal match), stop
-here and run the `onboard-second-brain` skill instead — it owns the
+here and run the `second-brain:onboard` skill instead — it owns the
 one-time bootstrap from template placeholders to real content. Once no
 placeholder remains, everything below applies.
 

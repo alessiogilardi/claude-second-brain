@@ -1,18 +1,18 @@
 <!-- BEGIN SECOND BRAIN SYSTEM (managed by the second-brain plugin: do not edit this block by hand, edit bootstrap/payload/claude-md-block.md and re-run the bootstrap with --refresh-system) -->
 ## Skill: Second Brain
 **Source of Truth:** `docs/` (architecture, ADRs, state).
-**Full Policy:** the `update-second-brain` skill.
+**Full Policy:** the `second-brain:update` skill.
 
 @docs/README.md
 
 ### Triggers (IMMEDIATE ACTION REQUIRED)
-Run `skill: "update-second-brain"` after:
+Run `skill: "second-brain:update"` after:
 * Schema changes or structural refactors.
 * New architectural decisions or recurring patterns.
 * Testing-strategy changes.
 * `[SECOND BRAIN SYSTEM] COMMIT REJECTED` pre-commit error.
 
-**Exception:** IF `docs/*.md` contains `> Placeholder —`, run `onboard-second-brain` instead.
+**Exception:** IF `docs/*.md` contains `> Placeholder —`, run `second-brain:onboard` instead.
 
 ### Strict Commit Rule
 Commits touching code **MUST** stage an update to `docs/` **or this file**.

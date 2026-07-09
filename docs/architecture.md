@@ -44,14 +44,15 @@ lives in the plugin; everything that must be committed is bootstrapped.
   (bash, no `uv`/Python/`jq`) mirrors the pre-commit exclusion logic and
   reports uncommitted drift via the `{"decision":"block",…}` contract,
   guarded against looping by `stop_hook_active`.
-- **`commands/second-brain-bootstrap.md` / `second-brain-refresh.md`** —
-  slash commands that run `bootstrap.sh` (the second with
-  `--refresh-system`). The command executes the script deterministically;
-  the model only reports its output.
-- **`skills/{update-second-brain,onboard-second-brain}/SKILL.md`** — the
-  two skills that read/write `docs/`: `onboard-second-brain` bootstraps a
-  fresh destination's placeholders once; `update-second-brain` keeps
-  `docs/` in sync afterward.
+- **`commands/bootstrap.md` / `refresh.md`** — slash commands
+  (`/second-brain:bootstrap`, `/second-brain:refresh`) that run
+  `bootstrap.sh` (the second with `--refresh-system`). The command
+  executes the script deterministically; the model only reports its
+  output.
+- **`skills/{update,onboard}/SKILL.md`** — the two skills that read/write
+  `docs/`: `second-brain:onboard` bootstraps a fresh destination's
+  placeholders once; `second-brain:update` keeps `docs/` in sync
+  afterward.
 - **`agents/second-brain-reader.md`** — a read-only subagent that answers
   questions from `docs/` with verbatim quotes, to save the caller's
   context.
@@ -67,20 +68,20 @@ plugin/repo boundary (see ADR 0002).
    then `/plugin install second-brain@second-brain-marketplace`. The
    skills, reader agent, and Stop hook become available; nothing is written
    into the project working tree yet.
-2. **Bootstrap the repo** — run `/second-brain-bootstrap` (which runs
+2. **Bootstrap the repo** — run `/second-brain:bootstrap` (which runs
    `bootstrap.sh`). Create-only: scaffolds `docs/`, appends the `CLAUDE.md`
    block, installs the git `pre-commit` + `core.hooksPath`, and copies the
    CI workflow. Safe to re-run (everything reports `[SKIP]`).
-3. **Onboard** (once per destination) — run the `onboard-second-brain`
+3. **Onboard** (once per destination) — run the `second-brain:onboard`
    skill: replaces every `> Placeholder` marker under `docs/` with real
    content verified against that destination's code.
 4. **Ongoing enforcement** — a source-changing commit without a matching
    `docs/`/`CLAUDE.md` change is rejected by `pre-commit` → the
-   `update-second-brain` skill runs, docs are staged with the code, commit
+   `second-brain:update` skill runs, docs are staged with the code, commit
    retried. The Stop hook and the CI workflow catch what the local,
    non-cloned pre-commit hook misses.
 5. **Refresh system files** — after a plugin update ships new hook/CI/block
-   content, `/second-brain-refresh` (`--refresh-system`) overwrites only
+   content, `/second-brain:refresh` (`--refresh-system`) overwrites only
    those three committed files; `docs/` and user prose stay untouched.
 
 ## Relevant architectural decisions
@@ -92,4 +93,4 @@ plugin/repo boundary (see ADR 0002).
 - [ADR 0001](./adr/0001-manifest-gated-sync-for-system-owned-files.md) —
   the previous SHA-256-manifest install strategy, **superseded by 0003**.
 
-*Last updated: 2026-07-08 — verified against commit `b595503`.*
+*Last updated: 2026-07-09 — verified against commit `94be0ce`.*

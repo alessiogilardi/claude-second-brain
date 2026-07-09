@@ -11,7 +11,7 @@
 # verifies that *some* file under docs/ or CLAUDE.md was staged alongside
 # source changes -- it cannot verify the change is actually relevant or
 # truthful. A green hook is not proof of alignment: the real verification
-# is the update-second-brain skill's checklist. Touching docs/ just to
+# is the second-brain:update skill's checklist. Touching docs/ just to
 # satisfy this hook ("doc-touch") defeats its purpose.
 #
 # EXCLUDE_PATTERN: files matching this are ignored when deciding whether
@@ -50,9 +50,9 @@ if [ -n "$source_changed" ] && [ -z "$docs_changed" ]; then
     echo "  You have staged source code changes, but no change in docs/"
     echo "  or in the CLAUDE.md file."
     echo ""
-    echo "  Claude, run the update-second-brain skill, then retry the"
+    echo "  Claude, run the second-brain:update skill, then retry the"
     echo "  commit. If this is a false positive or a legitimate exception,"
-    echo "  see the update-second-brain skill and use"
+    echo "  see the second-brain:update skill and use"
     echo "  git commit --no-verify."
     echo ""
     echo "=================================================================="

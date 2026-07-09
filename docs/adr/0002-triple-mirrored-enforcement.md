@@ -67,7 +67,7 @@ places, kept mirrored by convention rather than shared code:
 - The mirror now crosses a distribution boundary: an `EXCLUDE_PATTERN` fix
   reaches the plugin's Stop hook via `/plugin marketplace update`, but the
   committed pre-commit and CI copies in *already-bootstrapped* destinations
-  only pick it up when someone runs `/second-brain-refresh`
+  only pick it up when someone runs `/second-brain:refresh`
   (`--refresh-system`). A drift window therefore exists per destination
   until refreshed.
 

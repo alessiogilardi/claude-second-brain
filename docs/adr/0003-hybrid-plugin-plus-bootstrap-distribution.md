@@ -40,12 +40,12 @@ Split distribution into two native mechanisms:
    these files natively).
 
 2. **A deterministic git-bash bootstrap** (`bootstrap/bootstrap.sh`,
-   shipped inside the plugin, invoked by the `/second-brain-bootstrap`
+   shipped inside the plugin, invoked by the `/second-brain:bootstrap`
    slash command) that scaffolds the must-be-committed files from
    `bootstrap/payload/` into the destination working tree. It is
    **create-only**: it never overwrites an existing file and never deletes
    anything, so an accidental re-run is a no-op. The only overwrite path is
-   `--refresh-system` (via `/second-brain-refresh`), scoped to exactly the
+   `--refresh-system` (via `/second-brain:refresh`), scoped to exactly the
    git pre-commit, the CI workflow, and the `CLAUDE.md` block between its
    markers — `docs/` and user prose are never touched.
 

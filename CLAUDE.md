@@ -5,18 +5,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 <!-- BEGIN SECOND BRAIN SYSTEM (managed by the second-brain plugin: do not edit this block by hand, edit bootstrap/payload/claude-md-block.md and re-run the bootstrap with --refresh-system) -->
 ## Skill: Second Brain
 **Source of Truth:** `docs/` (architecture, ADRs, state).
-**Full Policy:** the `update-second-brain` skill.
+**Full Policy:** the `second-brain:update` skill.
 
 @docs/README.md
 
 ### Triggers (IMMEDIATE ACTION REQUIRED)
-Run `skill: "update-second-brain"` after:
+Run `skill: "second-brain:update"` after:
 * Schema changes or structural refactors.
 * New architectural decisions or recurring patterns.
 * Testing-strategy changes.
 * `[SECOND BRAIN SYSTEM] COMMIT REJECTED` pre-commit error.
 
-**Exception:** IF `docs/*.md` contains `> Placeholder —`, run `onboard-second-brain` instead.
+**Exception:** IF `docs/*.md` contains `> Placeholder —`, run `second-brain:onboard` instead.
 
 ### Strict Commit Rule
 Commits touching code **MUST** stage an update to `docs/` **or this file**.
@@ -43,11 +43,11 @@ There is no build step, package manager, or automated test suite (see
 
 - Install the plugin: `/plugin marketplace add .` then
   `/plugin install second-brain@second-brain-marketplace`.
-- Scaffold the repo-side files: `/second-brain-bootstrap` (runs
+- Scaffold the repo-side files: `/second-brain:bootstrap` (runs
   `bootstrap/bootstrap.sh`, create-only). Or directly:
   `bash bootstrap/bootstrap.sh [TargetPath]`.
 - Refresh the committed system files after a plugin update:
-  `/second-brain-refresh` (runs `bootstrap.sh --refresh-system`).
+  `/second-brain:refresh` (runs `bootstrap.sh --refresh-system`).
 - Verify a change by running `bootstrap.sh` against a scratch `git init`
   folder and asserting create/idempotency/pre-commit/hooksPath/refresh by
   hand (see `docs/testing.md`).

@@ -18,11 +18,11 @@ repo/
 │   ├── hooks.json                      # wires the Stop event to session-reminder.sh
 │   └── session-reminder.sh             # bash Stop-hook mirror of the pre-commit check
 ├── commands/                       # plugin slash commands
-│   ├── second-brain-bootstrap.md       # runs bootstrap.sh
-│   └── second-brain-refresh.md         # runs bootstrap.sh --refresh-system
+│   ├── bootstrap.md                    # /second-brain:bootstrap -> bootstrap.sh
+│   └── refresh.md                      # /second-brain:refresh -> bootstrap.sh --refresh-system
 ├── skills/                         # plugin skills
-│   ├── update-second-brain/SKILL.md
-│   └── onboard-second-brain/SKILL.md
+│   ├── update/SKILL.md                 # second-brain:update
+│   └── onboard/SKILL.md                # second-brain:onboard
 ├── agents/
 │   └── second-brain-reader.md          # read-only docs/ retrieval subagent
 ├── docs/                           # this repo's own Second Brain (dogfood)
@@ -62,4 +62,4 @@ repo/
 - `.gitignore` excludes `.claude/settings.local.json` and `.vscode/`:
   per-contributor local config, never shared through the repo.
 
-*Last updated: 2026-07-08 — verified against commit `b595503`.*
+*Last updated: 2026-07-09 — verified against commit `94be0ce`.*
