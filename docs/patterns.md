@@ -11,6 +11,7 @@
 | Plugin-carried runtime vs. bootstrapped repo files | skills/agent/Stop hook are served read-only from the plugin cache; `docs/`, the `CLAUDE.md` block, the git pre-commit, and the CI workflow are committed into the destination working tree | A plugin cannot write the working tree; the committed files must survive fresh clones, non-installers, and CI. This boundary is the core of the design (ADR 0003). |
 | Dependency-free hooks | `hooks/session-reminder.sh` and `bootstrap/payload/git-pre-commit` are bash + git only (no `uv`, Python, or `jq`) | The plugin needs only bash + git; it also tightens the ADR-0002 mirror to shell in all three files, so the shared `EXCLUDE_PATTERN` is a byte-identical string everywhere. |
 | Nudge, don't enforce, at session start | `hooks/bootstrap-reminder.sh` (`SessionStart`, matcher `"startup"`) checks for the same `<!-- BEGIN SECOND BRAIN SYSTEM` marker `bootstrap.sh` checks, and prints a plain-stdout reminder if absent — it never runs the bootstrap itself | Claude Code has no plugin post-install lifecycle event, so a hook is the closest substitute; auto-writing into a repo's working tree on every session start would be surprising and contradicts the bootstrap's own create-only, non-destructive philosophy. See ADR 0004. |
+| Bump `plugin.json`'s `version` on every plugin-carried runtime change | `.claude-plugin/plugin.json`, whenever `skills/`, `agents/`, or `hooks/` content changes | `/plugin marketplace update` refreshes an installed plugin's cache from the `version` field; a content-only change with no version bump does not propagate to already-installed consumers. |
 
 ## Naming conventions
 
@@ -32,4 +33,4 @@
 - ADR files: `NNNN-*.md`, zero-padded to 4 digits (see the
   `second-brain:update` skill's "ADR numbering").
 
-*Last updated: 2026-07-09 — verified against commit `4e50f09`.*
+*Last updated: 2026-07-09 — verified against commit `62979fe`.*
