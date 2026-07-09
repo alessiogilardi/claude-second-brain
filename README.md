@@ -102,6 +102,31 @@ on GitHub Actions, so it travels with the repo and can't be skipped with
 the actual backstop — enable Actions on the destination repo (and mark the
 job required in branch protection) to enforce it.
 
+## Versioning (for plugin maintainers)
+
+`.claude-plugin/plugin.json`'s `version` follows `MAJOR.MINOR.PATCH`:
+
+- **MAJOR** — a breaking change for already-installed consumers: a
+  command, skill, or agent renamed/removed, a hook's observable behavior
+  changes incompatibly, or a consumer needs to take action (re-run
+  `/second-brain:bootstrap` or `--refresh-system`) beyond the normal
+  `/plugin marketplace update`.
+- **MINOR** — a new, backward-compatible capability: a new skill, hook,
+  command, or optional behavior. Existing consumers keep working with no
+  action required.
+- **PATCH** — a bug fix, wording/doc fix, or internal refactor with no
+  observable interface change.
+
+`/plugin marketplace update` only refreshes an installed consumer's
+plugin cache when `version` changes — a content-only change with no
+version bump silently never propagates. A CI check
+(`.github/workflows/plugin-version.yml`, this repo's own tooling, not
+shipped to consumers) fails a PR that touches `hooks/`, `skills/`,
+`agents/`, or `commands/` without also bumping `version`, and rejects a
+malformed or non-increasing version. It cannot judge which tier
+(major/minor/patch) is correct for a given change — that stays a human
+call; see [ADR 0005](./docs/adr/0005-semver-and-ci-enforced-version-bump.md).
+
 ## Requirements
 
 - **git bash** — Git for Windows / MSYS, or any POSIX `bash` on

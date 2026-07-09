@@ -64,6 +64,13 @@ lives in the plugin; everything that must be committed is bootstrapped.
 - **`agents/second-brain-reader.md`** — a read-only subagent that answers
   questions from `docs/` with verbatim quotes, to save the caller's
   context.
+- **`.github/workflows/plugin-version.yml`** — this repo's own release
+  hygiene, unrelated to the Second Brain system it distributes (a
+  destination project never sees it, and it's not part of
+  `bootstrap/payload/`). Fails a PR that changes `hooks/`, `skills/`,
+  `agents/`, or `commands/` without also bumping
+  `.claude-plugin/plugin.json`'s `version`, and rejects a malformed or
+  non-increasing version (see ADR 0005).
 
 The `pre-commit` hook and the CI workflow live in `bootstrap/payload/`
 (bootstrapped into the consuming repo), while `session-reminder.sh` lives
@@ -96,6 +103,9 @@ plugin/repo boundary (see ADR 0002).
 
 ## Relevant architectural decisions
 
+- [ADR 0005](./adr/0005-semver-and-ci-enforced-version-bump.md) —
+  three-tier semantic versioning for `plugin.json`, with a repo-specific
+  CI check (not a local hook) enforcing that a bump happened.
 - [ADR 0004](./adr/0004-sessionstart-bootstrap-nudge.md) — nudge, not
   enforce: a `SessionStart` hook reminds instead of auto-running the
   bootstrap, since Claude Code has no post-install lifecycle event.
@@ -106,4 +116,4 @@ plugin/repo boundary (see ADR 0002).
 - [ADR 0001](./adr/0001-manifest-gated-sync-for-system-owned-files.md) —
   the previous SHA-256-manifest install strategy, **superseded by 0003**.
 
-*Last updated: 2026-07-09 — verified against commit `4e50f09`.*
+*Last updated: 2026-07-09 — verified against commit `5e5b0b9`.*

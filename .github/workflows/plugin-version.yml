@@ -1,0 +1,78 @@
+# [PLUGIN VERSION] Version-bump backstop -- repo-specific, NOT part of
+# bootstrap/payload/. This plugin's own release hygiene, unrelated to the
+# Second Brain docs-sync system this repo distributes to other projects;
+# a destination project has no plugin.json and never sees this workflow.
+#
+# There is no local hook for this: .claude/hooks/pre-commit is bootstrap-
+# payload-managed content and --refresh-system overwrites it unconditionally,
+# so a hand-added check there would be silently clobbered on the next
+# refresh (see docs/adr/0005-semver-and-ci-enforced-version-bump.md). CI is
+# the only enforcement point.
+#
+# This can only verify a version bump *happened*, is well-formed
+# MAJOR.MINOR.PATCH, and increased -- not that the correct tier (major /
+# minor / patch) was chosen for the nature of the change. That judgment
+# stays with the author and reviewer; see docs/patterns.md and README.md
+# for the tier definitions.
+name: Plugin version bump check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify plugin.json version bumped and valid when runtime changed
+        shell: bash
+        run: |
+          set -e
+          RUNTIME_PATTERN='^(hooks/|skills/|agents/|commands/)'
+
+          base_sha="${{ github.event.pull_request.base.sha || github.event.before }}"
+          head_sha="${{ github.event.pull_request.head.sha || github.sha }}"
+
+          # On a brand-new branch push, github.event.before is all-zeros; fall back to an empty-tree diff base.
+          if ! git rev-parse --verify --quiet "$base_sha^{commit}" >/dev/null 2>&1; then
+            base_sha=$(git hash-object -t tree /dev/null)
+          fi
+
+          if [ "$base_sha" = "$(git hash-object -t tree /dev/null)" ]; then
+            changed_files=$(git diff --name-only "$base_sha" "$head_sha")
+          else
+            changed_files=$(git diff --name-only "$base_sha...$head_sha")
+          fi
+          runtime_changed=$(printf '%s\n' "$changed_files" | grep -E "$RUNTIME_PATTERN" || true)
+          version_changed=$(printf '%s\n' "$changed_files" | grep -Fx '.claude-plugin/plugin.json' || true)
+
+          if [ -n "$runtime_changed" ] && [ -z "$version_changed" ]; then
+            echo "::error::[PLUGIN VERSION] hooks/, skills/, agents/, or commands/ changed but .claude-plugin/plugin.json was not. Bump \"version\" (see docs/patterns.md) so /plugin marketplace update propagates this change to installed consumers."
+            exit 1
+          fi
+
+          if [ -z "$version_changed" ]; then
+            exit 0
+          fi
+
+          new_version=$(git show "$head_sha:.claude-plugin/plugin.json" | jq -r '.version // empty')
+
+          if ! printf '%s' "$new_version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::[PLUGIN VERSION] plugin.json version '$new_version' is not valid MAJOR.MINOR.PATCH semver."
+            exit 1
+          fi
+
+          old_version=$(git show "$base_sha:.claude-plugin/plugin.json" 2>/dev/null | jq -r '.version // empty' || true)
+
+          if [ -n "$old_version" ]; then
+            highest=$(printf '%s\n%s\n' "$old_version" "$new_version" | sort -V | tail -n1)
+            if [ "$highest" != "$new_version" ] || [ "$old_version" = "$new_version" ]; then
+              echo "::error::[PLUGIN VERSION] plugin.json version must increase (was $old_version, now $new_version)."
+              exit 1
+            fi
+          fi

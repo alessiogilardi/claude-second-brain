@@ -66,4 +66,11 @@ There is no build step, package manager, or automated test suite (see
   get it wrong and a destination's hand-edits get clobbered, or a system
   update stops propagating. `EXCLUDE_PATTERN` must stay byte-identical
   across the pre-commit, the Stop hook, and the CI workflow (ADR 0002).
+- Bump `.claude-plugin/plugin.json`'s `version` (`MAJOR.MINOR.PATCH`) on
+  every change under `hooks/`, `skills/`, `agents/`, or `commands/` —
+  `/plugin marketplace update` only refreshes installed consumers when
+  `version` changes. `.github/workflows/plugin-version.yml` fails a PR
+  that misses this, but cannot judge which tier is correct — pick the
+  tier yourself: major = breaking, minor = new backward-compatible
+  capability, patch = bug fix (see ADR 0005).
 

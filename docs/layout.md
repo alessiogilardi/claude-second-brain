@@ -30,7 +30,9 @@ repo/
 ├── .claude/
 │   ├── hooks/pre-commit                # this repo's bootstrapped git hook (dogfood)
 │   └── settings.local.json             # per-contributor local config (gitignored)
-├── .github/workflows/second-brain.yml  # this repo's bootstrapped CI (dogfood)
+├── .github/workflows/
+│   ├── second-brain.yml                # this repo's bootstrapped CI (dogfood)
+│   └── plugin-version.yml              # repo-specific: enforces plugin.json version bump
 ├── .gitattributes                  # forces LF on shebang'd payload/hook scripts
 ├── CLAUDE.md
 └── README.md
@@ -64,5 +66,9 @@ repo/
   `.claude/`.
 - `.gitignore` excludes `.claude/settings.local.json` and `.vscode/`:
   per-contributor local config, never shared through the repo.
+- **`.github/workflows/plugin-version.yml`** is hand-authored and lives
+  outside `bootstrap/payload/workflows/` on purpose: it enforces this
+  repo's own `plugin.json` version-bump discipline and is never
+  distributed to a destination project (see ADR 0005).
 
-*Last updated: 2026-07-09 — verified against commit `4e50f09`.*
+*Last updated: 2026-07-09 — verified against commit `5e5b0b9`.*

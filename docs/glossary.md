@@ -16,5 +16,6 @@
 | Doc-touch | An illegitimate edit to `docs/` made only to satisfy the pre-commit hook, without a real corresponding source change — explicitly disallowed. |
 | Proposal mode | The confirmation flow for new ADRs: drafted and shown to the user before saving, except for an unattended fallback that still writes with `Status: Proposed`. |
 | Bootstrap nudge | `hooks/bootstrap-reminder.sh`, the plugin's `SessionStart` hook: reminds the model to run `/second-brain:bootstrap` when a repo lacks the `CLAUDE.md` marker; never runs the bootstrap itself. |
+| Plugin version bump check | `.github/workflows/plugin-version.yml`: fails a PR that changes `hooks/`, `skills/`, `agents/`, or `commands/` without also bumping `plugin.json`'s `version`, and rejects a malformed or non-increasing bump. Repo-specific, not distributed to destinations (ADR 0005). |
 
-*Last updated: 2026-07-09 — verified against commit `4e50f09`.*
+*Last updated: 2026-07-09 — verified against commit `5e5b0b9`.*
