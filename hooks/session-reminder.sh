@@ -3,7 +3,8 @@
 # [SECOND BRAIN SYSTEM] Stop-hook reminder (bash).
 #
 # Mirrors the exclusion logic in the bootstrapped git pre-commit hook
-# (.claude/hooks/pre-commit). A Stop hook's plain stdout on exit 0 is
+# (installed into the committed hooks dir, .githooks/pre-commit by
+# default). A Stop hook's plain stdout on exit 0 is
 # invisible to Claude, only visible to the user in transcript mode -- so
 # drift is reported via the "block" JSON contract on stdout, which
 # surfaces the reason to the model and stops the session once.
@@ -15,7 +16,7 @@
 # dependencies: bash + git only (no uv, no python, no jq).
 set -uo pipefail
 
-EXCLUDE_PATTERN='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/)|(^|/)tests?/'
+EXCLUDE_PATTERN='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/)|(^|/)tests?/'
 DOCS_PATTERN='^docs/|^CLAUDE\.md$'
 
 # Loop guard: if we already blocked this stop, do nothing.

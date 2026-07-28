@@ -15,12 +15,23 @@
 #     existing husky/other hooksPath is never clobbered (use
 #     --force-hookspath to override).
 #
+# The pre-commit is installed into a committed, shared hooks dir (default
+# .githooks, overridable with --hooks-dir), and core.hooksPath is pointed
+# at it. The dir is versioned like any other file so it survives clones.
+# A pre-existing pre-commit is never overwritten: our check is injected as
+# a marker-delimited block at the top of it (running first, rejecting only,
+# then falling through to the host logic). A foreign pre-commit sitting in
+# .git/hooks is copied into the hooks dir before injection so repointing
+# core.hooksPath doesn't lose it; other .git/hooks scripts about to be
+# shadowed are reported.
+#
 # The only overwrite path is --refresh-system, and it is scoped to exactly
 # the git pre-commit hook, the CI workflow, and the CLAUDE.md block BETWEEN
 # its markers -- docs/ and any user prose outside the markers are never
 # touched.
 #
 # Usage: bootstrap.sh [TARGET_DIR] [--refresh-system] [--force-hookspath]
+#                     [--hooks-dir DIR]
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -29,18 +40,39 @@ PAYLOAD="$SCRIPT_DIR/payload"
 BEGIN='<!-- BEGIN SECOND BRAIN SYSTEM'
 END='<!-- END SECOND BRAIN SYSTEM -->'
 
+# Shell-comment markers delimiting our check inside the pre-commit hook.
+# The payload ships with them so the same block is used whether the whole
+# file is installed fresh or only the block is injected into a host hook.
+HOOK_BEGIN='# >>> BEGIN SECOND BRAIN SYSTEM pre-commit >>>'
+HOOK_END='# <<< END SECOND BRAIN SYSTEM pre-commit <<<'
+
 # --- Parse args: first non-flag is the target dir. ---
 TARGET=""
 REFRESH=0
 FORCE_HOOKSPATH=0
-for a in "$@"; do
-    case "$a" in
+HOOKS_DIR_ARG=""
+DEFAULT_HOOKS_DIR=".githooks"
+while [ $# -gt 0 ]; do
+    case "$1" in
         --refresh-system)  REFRESH=1 ;;
         --force-hookspath) FORCE_HOOKSPATH=1 ;;
-        --*)               echo "  [WARN] unknown flag: $a" ;;
-        *)                 [ -z "$TARGET" ] && TARGET="$a" ;;
+        --hooks-dir)       shift
+                           HOOKS_DIR_ARG="${1:-}"
+                           [ -n "$HOOKS_DIR_ARG" ] || { echo "  [ERROR] --hooks-dir requires a value" >&2; exit 2; } ;;
+        --hooks-dir=*)     HOOKS_DIR_ARG="${1#--hooks-dir=}" ;;
+        --*)               echo "  [WARN] unknown flag: $1" ;;
+        *)                 [ -z "$TARGET" ] && TARGET="$1" ;;
     esac
+    shift
 done
+
+# A committed, shared hooks dir must be a relative path inside the repo.
+if [ -n "$HOOKS_DIR_ARG" ]; then
+    case "$HOOKS_DIR_ARG" in
+        /*|*..*) echo "  [ERROR] --hooks-dir must be a relative path inside the repo (got: $HOOKS_DIR_ARG)" >&2; exit 2 ;;
+    esac
+    HOOKS_DIR_ARG="${HOOKS_DIR_ARG%/}"
+fi
 
 [ -n "$TARGET" ] || TARGET="${CLAUDE_PROJECT_DIR:-}"
 [ -n "$TARGET" ] || TARGET="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
@@ -62,6 +94,163 @@ copy_if_absent() {
     fi
 }
 
+# Resolve the hooks dir that core.hooksPath points at and where pre-commit
+# is installed. Precedence:
+#   1. explicit --hooks-dir;
+#   2. an existing Second Brain core.hooksPath, so installs made before the
+#      configurable-dir change keep their location (e.g. .claude/hooks) and
+#      --refresh-system writes there;
+#   3. the default (.githooks), committed and shared like any other file.
+resolve_hooks_dir() {
+    if [ -n "$HOOKS_DIR_ARG" ]; then
+        printf '%s\n' "$HOOKS_DIR_ARG"
+        return
+    fi
+    local current
+    current="$(git config --get core.hooksPath 2>/dev/null || true)"
+    if [ -n "$current" ] && [ -f "$current/pre-commit" ] \
+        && grep -qF "SECOND BRAIN SYSTEM" "$current/pre-commit" 2>/dev/null; then
+        printf '%s\n' "$current"
+        return
+    fi
+    printf '%s\n' "$DEFAULT_HOOKS_DIR"
+}
+
+# True if a hook file already carries our marker block.
+hook_is_ours() { grep -qF "$HOOK_BEGIN" "$1" 2>/dev/null; }
+
+# True if a hook is a pre-0.3 Second Brain hook: our old standalone format,
+# which carries the "SECOND BRAIN SYSTEM" tag but not the block markers. Such
+# a hook is ours to replace wholesale on upgrade (no user logic to preserve).
+hook_is_legacy_ours() {
+    grep -qF "SECOND BRAIN SYSTEM" "$1" 2>/dev/null && ! hook_is_ours "$1"
+}
+
+# Emit the marker-delimited block (inclusive) from the payload hook.
+payload_hook_block() {
+    awk -v b="$HOOK_BEGIN" -v e="$HOOK_END" '
+        index($0, b) { p = 1 }
+        p            { print }
+        index($0, e) { p = 0 }
+    ' "$PAYLOAD/git-pre-commit"
+}
+
+# Insert our block at the top of an existing (foreign) hook: right after the
+# shebang if present, otherwise before the first line. The block runs first
+# and only exits on rejection, so the host's own logic still runs on success.
+inject_hook_block() {
+    local hook="$1" blk tmp
+    blk="$(mktemp)"; tmp="$(mktemp)"
+    payload_hook_block > "$blk"
+    awk -v blockfile="$blk" '
+        NR == 1 && /^#!/ {
+            print
+            while ((getline l < blockfile) > 0) print l
+            close(blockfile)
+            print ""
+            next
+        }
+        NR == 1 {
+            while ((getline l < blockfile) > 0) print l
+            close(blockfile)
+            print ""
+            print
+            next
+        }
+        { print }
+    ' "$hook" > "$tmp"
+    cat "$tmp" > "$hook"
+    rm -f "$tmp" "$blk"
+    echo "  [INJECT] SECOND BRAIN block added to existing $hook (runs first, rejects only, then falls through)"
+}
+
+# Replace the content between our markers in an existing hook with the
+# current payload block (used by --refresh-system).
+refresh_hook_block() {
+    local hook="$1" blk tmp
+    blk="$(mktemp)"; tmp="$(mktemp)"
+    payload_hook_block > "$blk"
+    awk -v begin="$HOOK_BEGIN" -v end="$HOOK_END" -v blockfile="$blk" '
+        index($0, begin) {
+            while ((getline l < blockfile) > 0) print l
+            close(blockfile)
+            skipping = 1
+            next
+        }
+        skipping && index($0, end) { skipping = 0; next }
+        skipping { next }
+        { print }
+    ' "$hook" > "$tmp"
+    cat "$tmp" > "$hook"
+    rm -f "$tmp" "$blk"
+}
+
+# Install our pre-commit into HOOKS_DIR without ever overwriting a user hook:
+#   * HOOKS_DIR/pre-commit already ours (markers) -> skip;
+#   * HOOKS_DIR/pre-commit is a pre-0.3 ours hook -> replace wholesale;
+#   * HOOKS_DIR/pre-commit exists (foreign)       -> inject block;
+#   * foreign .git/hooks/pre-commit present        -> copy it into HOOKS_DIR
+#                                                    (original untouched), inject;
+#   * nothing there                                -> install the payload as-is.
+install_or_inject_precommit() {
+    local target="$HOOKS_DIR/pre-commit"
+    if [ -s "$target" ]; then
+        if hook_is_ours "$target"; then
+            echo "  [SKIP] $target (SECOND BRAIN block already present)"
+        elif hook_is_legacy_ours "$target"; then
+            cp "$PAYLOAD/git-pre-commit" "$target"
+            echo "  [UPGRADE] $target (replaced pre-0.3 Second Brain hook)"
+        else
+            inject_hook_block "$target"
+        fi
+    elif [ -s ".git/hooks/pre-commit" ] && ! grep -qF "SECOND BRAIN SYSTEM" ".git/hooks/pre-commit" 2>/dev/null; then
+        mkdir -p "$HOOKS_DIR"
+        cp ".git/hooks/pre-commit" "$target"
+        echo "  [MIGRATE] copied .git/hooks/pre-commit -> $target (original left in place; core.hooksPath will shadow it)"
+        inject_hook_block "$target"
+    else
+        mkdir -p "$HOOKS_DIR"
+        cp "$PAYLOAD/git-pre-commit" "$target"
+        echo "  [CREATE] $target"
+    fi
+    chmod +x "$target" 2>/dev/null || true
+}
+
+# Repointing core.hooksPath makes git read ONLY that dir, silently disabling
+# any real (non-sample) hooks still in .git/hooks. pre-commit is handled by
+# install_or_inject_precommit (migrated); warn about the rest so they can be
+# moved into HOOKS_DIR instead of vanishing.
+warn_shadowed_git_hooks() {
+    local f name
+    [ -d ".git/hooks" ] || return 0
+    for f in .git/hooks/*; do
+        [ -f "$f" ] || continue
+        name="$(basename "$f")"
+        case "$name" in *.sample | pre-commit) continue ;; esac
+        grep -qF "SECOND BRAIN SYSTEM" "$f" 2>/dev/null && continue
+        echo "  [WARN] .git/hooks/$name will be shadowed by core.hooksPath=$HOOKS_DIR; move it into $HOOKS_DIR to keep it active"
+    done
+}
+
+# Pin the installed hook to LF in the destination's .gitattributes. A hook is
+# a #!/bin/sh script: if a Windows checkout (core.autocrlf=true) rewrites it
+# to CRLF, the shebang breaks with "bad interpreter: ^M". Idempotent
+# create-or-append, scoped to our own file so a foreign gitattributes setup
+# for other paths is never disturbed.
+ensure_gitattributes_lf() {
+    local entry="$HOOKS_DIR/pre-commit text eol=lf"
+    if [ -f .gitattributes ] && grep -qF "$entry" .gitattributes; then
+        echo "  [SKIP] .gitattributes ($HOOKS_DIR/pre-commit eol=lf present)"
+        return
+    fi
+    {
+        [ -s .gitattributes ] && printf '\n'
+        printf '# [SECOND BRAIN SYSTEM] keep the git hook LF so #!/bin/sh works on every platform\n'
+        printf '%s\n' "$entry"
+    } >> .gitattributes
+    echo "  [CREATE] .gitattributes ($HOOKS_DIR/pre-commit eol=lf)"
+}
+
 # 1. docs/ scaffold (create-only, recursive).
 while IFS= read -r -d '' f; do
     copy_if_absent "$f" "docs/${f#"$PAYLOAD"/docs/}"
@@ -81,30 +270,30 @@ else
     echo "  [CREATE] CLAUDE.md block appended"
 fi
 
-# 3. git pre-commit hook (create-only) + core.hooksPath wiring.
-copy_if_absent "$PAYLOAD/git-pre-commit" ".claude/hooks/pre-commit"
-chmod +x ".claude/hooks/pre-commit" 2>/dev/null || true
+# 3. git pre-commit hook (never overwrites a user hook) + core.hooksPath
+#    wiring into the committed, configurable hooks dir.
+HOOKS_DIR="$(resolve_hooks_dir)"
+echo "  [GIT] hooks dir: $HOOKS_DIR"
+install_or_inject_precommit
 
 if git rev-parse --git-dir >/dev/null 2>&1; then
+    ensure_gitattributes_lf
     current="$(git config --get core.hooksPath || true)"
-    # Git's default hook location, independent of Second Brain. A destination
-    # repo may already have an unrelated hook manager set up here; don't
-    # silently disable it by repointing core.hooksPath.
-    pre_existing_hook=".git/hooks/pre-commit"
     if [ -z "$current" ]; then
-        if [ -f "$pre_existing_hook" ] && ! grep -qF "SECOND BRAIN SYSTEM" "$pre_existing_hook" && [ "$FORCE_HOOKSPATH" = 0 ]; then
-            echo "  [WARN] existing .git/hooks/pre-commit is not ours; NOT setting core.hooksPath (re-run with --force-hookspath to override)"
-        else
-            git config core.hooksPath .claude/hooks
-            echo "  [GIT] core.hooksPath set to .claude/hooks"
-        fi
-    elif [ "$current" = ".claude/hooks" ]; then
-        echo "  [GIT] core.hooksPath already ours"
+        warn_shadowed_git_hooks
+        git config core.hooksPath "$HOOKS_DIR"
+        echo "  [GIT] core.hooksPath set to $HOOKS_DIR"
+    elif [ "$current" = "$HOOKS_DIR" ]; then
+        echo "  [GIT] core.hooksPath already set to $HOOKS_DIR"
     elif [ "$FORCE_HOOKSPATH" = 1 ]; then
-        git config core.hooksPath .claude/hooks
-        echo "  [GIT] core.hooksPath overwritten to .claude/hooks (--force-hookspath)"
+        warn_shadowed_git_hooks
+        git config core.hooksPath "$HOOKS_DIR"
+        echo "  [GIT] core.hooksPath overwritten to $HOOKS_DIR (--force-hookspath)"
     else
-        echo "  [WARN] core.hooksPath is '$current' (another hook manager?); left untouched (re-run with --force-hookspath to override)"
+        # Another hook manager (husky, lefthook, ...) owns core.hooksPath.
+        # Our hook now sits in $HOOKS_DIR but git won't read it until this
+        # is repointed; don't clobber their setup silently.
+        echo "  [WARN] core.hooksPath is '$current' (another hook manager?); left untouched, so $HOOKS_DIR/pre-commit is inert (re-run with --force-hookspath to override)"
     fi
 else
     echo "  [GIT] no git repository here; skipping hook wiring"
@@ -119,10 +308,21 @@ if [ "$REFRESH" = 1 ]; then
     echo ""
     echo "  Refreshing system files ..."
 
-    mkdir -p ".claude/hooks"
-    cp "$PAYLOAD/git-pre-commit" ".claude/hooks/pre-commit"
-    chmod +x ".claude/hooks/pre-commit" 2>/dev/null || true
-    echo "  [REFRESH] .claude/hooks/pre-commit"
+    hook="$HOOKS_DIR/pre-commit"
+    if [ ! -f "$hook" ]; then
+        mkdir -p "$HOOKS_DIR"
+        cp "$PAYLOAD/git-pre-commit" "$hook"
+        echo "  [REFRESH] $hook (installed; was missing)"
+    elif hook_is_ours "$hook"; then
+        refresh_hook_block "$hook"
+        echo "  [REFRESH] $hook (block between markers)"
+    elif hook_is_legacy_ours "$hook"; then
+        cp "$PAYLOAD/git-pre-commit" "$hook"
+        echo "  [REFRESH] $hook (upgraded pre-0.3 Second Brain hook)"
+    else
+        inject_hook_block "$hook"
+    fi
+    chmod +x "$hook" 2>/dev/null || true
 
     mkdir -p ".github/workflows"
     cp "$PAYLOAD/workflows/second-brain.yml" ".github/workflows/second-brain.yml"

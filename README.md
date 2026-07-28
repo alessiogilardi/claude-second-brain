@@ -60,20 +60,29 @@ bootstrapped, it nudges the model to run `/second-brain:bootstrap` (see
 ```
 
 It runs `bootstrap/bootstrap.sh` (you can also call
-`bash bootstrap/bootstrap.sh [TargetPath]` directly), which **create-only**:
+`bash bootstrap/bootstrap.sh [TargetPath] [--hooks-dir DIR]` directly):
 
-1. scaffolds the `docs/` set (placeholders + `adr/template.md`) — never
-   overwriting an existing file;
+1. scaffolds the `docs/` set (placeholders + `adr/template.md`) — create-only,
+   never overwriting an existing file;
 2. appends the marker-delimited block (`<!-- BEGIN/END SECOND BRAIN
    SYSTEM -->`) to `CLAUDE.md` if it isn't already present, leaving your
    own content untouched;
-3. installs `.claude/hooks/pre-commit` and points `core.hooksPath` at
-   `.claude/hooks` — unless a foreign `core.hooksPath` (e.g. husky) is
-   already set, in which case it warns and leaves it (pass
-   `--force-hookspath` to override);
-4. copies the CI workflow to `.github/workflows/second-brain.yml`.
+3. installs the git `pre-commit` into a committed, configurable hooks dir
+   (`--hooks-dir`, default `.githooks`) and points `core.hooksPath` at it —
+   unless a foreign `core.hooksPath` (e.g. husky) is already set, in which
+   case it warns and leaves it (pass `--force-hookspath` to override). Your
+   own `pre-commit` is never overwritten: the check is injected as a marker
+   block at the top of it (rejecting first, then falling through to your
+   logic), and a hook already sitting in `.git/hooks` is copied across
+   before `core.hooksPath` is repointed so it isn't shadowed away. The hook
+   is pinned to LF in your `.gitattributes` (one idempotent rule, scoped to
+   its own path) so a Windows checkout can't CRLF-break the `#!/bin/sh`
+   shebang;
+4. copies the CI workflow to `.github/workflows/second-brain.yml`
+   (create-only).
 
-It never overwrites and never deletes, so an accidental re-run is a no-op.
+It never deletes and never overwrites your own content, so an accidental
+re-run is a no-op (see [ADR 0006](./docs/adr/0006-configurable-committed-hooks-dir.md)).
 
 **3. Onboard (once).** Run the `second-brain:onboard` skill before your
 first commit, to replace every `docs/*.md` placeholder with real content.
@@ -82,10 +91,11 @@ the pre-commit hook rejects a source change with no matching docs update —
 correct, but the worst moment to pay that cost on a large repo.
 
 **Updating.** When a new plugin version ships, `/plugin marketplace update`
-refreshes the skills/agent/Stop hook automatically. To refresh the three
-*committed* system files (git pre-commit, CI workflow, `CLAUDE.md` block
-between its markers) run `/second-brain:refresh` — it overwrites only those
-and never touches `docs/` or your own prose.
+refreshes the skills/agent/Stop hook automatically. To refresh the
+*committed* system content (the git pre-commit block between its markers,
+the CI workflow, and the `CLAUDE.md` block between its markers) run
+`/second-brain:refresh` — it rewrites only our own slices and never touches
+`docs/`, your own prose, or any host hook logic wrapped around our block.
 
 ## Enforcement is per-clone, not per-repo
 
@@ -136,14 +146,16 @@ call; see [ADR 0005](./docs/adr/0005-semver-and-ci-enforced-version-bump.md).
 
 ## Customizing the pre-commit hook
 
-`.claude/hooks/pre-commit` is a syntactic check, not a semantic one: it
-only verifies that *some* file under `docs/` or `CLAUDE.md` was staged
-alongside source changes. The `EXCLUDE_PATTERN` variable at the top lists
-paths ignored when deciding whether "source changed" — add more lockfiles,
-generated files, or vendored paths there if the default set (tests, CI,
-common lockfiles, `.claude/`) doesn't fit the project. If you change it,
-keep it byte-identical across the three mirrors (the pre-commit, the
-plugin's `session-reminder.sh`, and the CI workflow — see ADR 0002).
+The committed pre-commit (`.githooks/pre-commit` by default) is a syntactic
+check, not a semantic one: it only verifies that *some* file under `docs/`
+or `CLAUDE.md` was staged alongside source changes. Its check lives inside a
+`# >>> BEGIN/END SECOND BRAIN SYSTEM pre-commit <<<` block; the
+`EXCLUDE_PATTERN` variable there lists paths ignored when deciding whether
+"source changed" — add more lockfiles, generated files, or vendored paths
+(or a non-default `--hooks-dir`) if the default set (tests, CI, common
+lockfiles, `.claude/`, `.githooks/`) doesn't fit the project. If you change
+it, keep it byte-identical across the three mirrors (the pre-commit block,
+the plugin's `session-reminder.sh`, and the CI workflow — see ADR 0002).
 Bypassing with `git commit --no-verify` is legitimate for a WIP commit on
 a private branch you'll squash later, or a doc-only follow-up commit — don't
 touch `docs/` just to satisfy the hook ("doc-touch"); see the
@@ -151,4 +163,4 @@ touch `docs/` just to satisfy the hook ("doc-touch"); see the
 
 On a non-Windows clone the hook scripts may lack the POSIX executable bit;
 Git for Windows runs them via `sh` regardless, but elsewhere run
-`chmod +x .claude/hooks/pre-commit` if needed.
+`chmod +x .githooks/pre-commit` if needed.

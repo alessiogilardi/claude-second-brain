@@ -129,15 +129,18 @@ or as an end-of-session check:
 
 ## Hook exclusions and legitimate bypasses
 
-The pre-commit hook (`.claude/hooks/pre-commit`) and its two mirrors —
-the Stop hook (the second-brain plugin's `session-reminder.sh`) and the
-CI backstop (`.github/workflows/second-brain.yml`) — all decide whether "source
+The pre-commit hook (installed in the committed hooks dir,
+`.githooks/pre-commit` by default) and its two mirrors — the Stop hook (the
+second-brain plugin's `session-reminder.sh`) and the CI backstop
+(`.github/workflows/second-brain.yml`) — all decide whether "source
 changed" using the same `EXCLUDE_PATTERN`: it skips lockfiles (`*.lock`,
 `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`,
-`uv.lock`, `Cargo.lock`, `Gemfile.lock`), `.github/`, `.claude/`, and
-`tests?/` at any depth. If a project needs a different set (more
-generated/vendored paths, a narrower test match), edit `EXCLUDE_PATTERN`
-in all three files together — they must stay mirrored.
+`uv.lock`, `Cargo.lock`, `Gemfile.lock`), `.github/`, `.claude/`,
+`.githooks/`, and `tests?/` at any depth. If a project needs a different
+set (more generated/vendored paths, a narrower test match, or a non-default
+`--hooks-dir`), edit `EXCLUDE_PATTERN` in all three files together — they
+must stay mirrored (the pre-commit's copy lives inside its marker block, the
+canonical source for both a fresh and an injected hook).
 
 Two legitimate reasons to bypass with `git commit --no-verify`:
 

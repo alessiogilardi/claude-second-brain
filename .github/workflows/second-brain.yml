@@ -1,12 +1,12 @@
 # [SECOND BRAIN SYSTEM] CI backstop.
 #
-# .claude/hooks/pre-commit only runs on machines where core.hooksPath was
-# set up by the bootstrap script -- that's local git config, so it isn't
-# cloned and can be skipped entirely (missing bootstrap, or plain
-# --no-verify). This workflow re-applies the same syntactic check to the
-# PR diff so a missing/bypassed local hook doesn't mean zero enforcement.
-# Keep EXCLUDE_PATTERN mirrored with .claude/hooks/pre-commit and the
-# second-brain plugin's session-reminder.sh.
+# The committed pre-commit (.githooks/pre-commit by default) only runs on
+# machines where core.hooksPath was set up by the bootstrap script -- that's
+# local git config, so it isn't cloned and can be skipped entirely (missing
+# bootstrap, or plain --no-verify). This workflow re-applies the same
+# syntactic check to the PR diff so a missing/bypassed local hook doesn't
+# mean zero enforcement. Keep EXCLUDE_PATTERN mirrored with the bootstrapped
+# git pre-commit and the second-brain plugin's session-reminder.sh.
 name: Second Brain docs check
 
 on:
@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          EXCLUDE_PATTERN='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/)|(^|/)tests?/'
+          EXCLUDE_PATTERN='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/)|(^|/)tests?/'
 
           base_sha="${{ github.event.pull_request.base.sha }}"
           head_sha="${{ github.event.pull_request.head.sha }}"

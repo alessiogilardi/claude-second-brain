@@ -5,10 +5,12 @@
 | Second Brain | The `docs/` + `CLAUDE.md` block + skill pair that keeps a destination project's documentation in sync with its code. |
 | Plugin | The native Claude Code plugin (`.claude-plugin/plugin.json`) that carries the runtime — skills, the reader agent, the Stop hook, and the SessionStart bootstrap nudge — served read-only from `~/.claude/plugins/cache/`, external to any consuming repo. |
 | Marketplace | The catalog (`.claude-plugin/marketplace.json`) that lists the plugin so it can be installed via `/plugin install`; here its single plugin `source` is `.`, the repo root. |
-| Bootstrap | `bootstrap/bootstrap.sh`: the deterministic, create-only git-bash script that scaffolds the repo-side files (docs/, CLAUDE.md block, git pre-commit, CI) into a destination working tree. |
+| Bootstrap | `bootstrap/bootstrap.sh`: the deterministic git-bash script that scaffolds the repo-side files (docs/, CLAUDE.md block, git pre-commit, CI) into a destination working tree — create-only except for the pre-commit, which is injected without overwriting a user hook. |
 | Payload | `bootstrap/payload/`: the single source of truth for every file the bootstrap copies into a destination. |
+| Hooks dir | The committed, configurable directory (`--hooks-dir`, default `.githooks`) that `core.hooksPath` is repointed at and where the git `pre-commit` is installed; versioned so enforcement survives clones (ADR 0006). |
+| Hook injection | Adding the Second Brain check to an existing `pre-commit` by inserting the marker-delimited block (`# >>> BEGIN/END SECOND BRAIN SYSTEM pre-commit <<<`) at the top instead of overwriting the file; the block rejects first, then falls through to the host hook's own logic. |
 | Destination project | The external repo the bootstrap scaffolds into and the plugin is enabled for; distinct from this template repo. |
-| Refresh | `bootstrap.sh --refresh-system` (via `/second-brain:refresh`): the opt-in overwrite of only the git pre-commit, the CI workflow, and the CLAUDE.md block between its markers — docs/ and user prose untouched. |
+| Refresh | `bootstrap.sh --refresh-system` (via `/second-brain:refresh`): the opt-in rewrite of only our own content — the git pre-commit block between its markers, the CI workflow, and the CLAUDE.md block between its markers — docs/, host hook logic, and user prose untouched. |
 | `${CLAUDE_PLUGIN_ROOT}` | Claude Code variable resolving to the plugin's cache directory at run time; used by `hooks.json` and the slash commands to locate the plugin's scripts. |
 | Onboarding | The one-time bootstrap (`second-brain:onboard` skill) that replaces every `> Placeholder` marker in a fresh destination's `docs/` with real content. |
 | Freshness footer | The `*Last updated: YYYY-MM-DD — verified against commit `sha`.*` line `second-brain:update` appends to every `docs/*.md` file it touches. |
@@ -18,4 +20,4 @@
 | Bootstrap nudge | `hooks/bootstrap-reminder.sh`, the plugin's `SessionStart` hook: reminds the model to run `/second-brain:bootstrap` when a repo lacks the `CLAUDE.md` marker; never runs the bootstrap itself. |
 | Plugin version bump check | `.github/workflows/plugin-version.yml`: fails a PR that changes `hooks/`, `skills/`, `agents/`, or `commands/` without also bumping `plugin.json`'s `version`, and rejects a malformed or non-increasing bump. Repo-specific, not distributed to destinations (ADR 0005). |
 
-*Last updated: 2026-07-09 — verified against commit `5e5b0b9`.*
+*Last updated: 2026-07-28 — verified against commit `00727a6`.*

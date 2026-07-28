@@ -4,3 +4,6 @@
 bootstrap/payload/git-pre-commit  text eol=lf
 bootstrap/payload/**              text eol=lf
 hooks/**                          text eol=lf
+
+# [SECOND BRAIN SYSTEM] keep the git hook LF so #!/bin/sh works on every platform
+.claude/hooks/pre-commit text eol=lf

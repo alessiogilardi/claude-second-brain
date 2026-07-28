@@ -27,8 +27,12 @@ changed without a matching docs change" logic) independently in three
 places, kept mirrored by convention rather than shared code:
 
 1. `bootstrap/payload/git-pre-commit` (POSIX sh) — bootstrapped into the
-   destination as `.claude/hooks/pre-commit`; fast local feedback at
-   commit time.
+   destination's committed hooks dir (`.githooks/pre-commit` by default, or
+   injected as a marker block into an existing hook — see ADR 0006); fast
+   local feedback at commit time. The check lives inside the hook's
+   `# >>> BEGIN/END SECOND BRAIN SYSTEM pre-commit <<<` block, which is the
+   canonical copy of `EXCLUDE_PATTERN` for both a freshly installed hook and
+   an injected one, so the mirror stays at three files, not four.
 2. `hooks/session-reminder.sh` (bash, plugin Stop hook) — served from the
    plugin cache; catches uncommitted drift at end-of-session, before
    anything is even staged. Bash + git only (no `uv`/Python/`jq`), so its

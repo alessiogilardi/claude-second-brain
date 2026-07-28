@@ -28,7 +28,7 @@ repo/
 │   └── second-brain-reader.md          # read-only docs/ retrieval subagent
 ├── docs/                           # this repo's own Second Brain (dogfood)
 ├── .claude/
-│   ├── hooks/pre-commit                # this repo's bootstrapped git hook (dogfood)
+│   ├── hooks/pre-commit                # this repo's bootstrapped git hook (dogfood; pre-0.3 location kept by the resolver — fresh repos default to .githooks/)
 │   └── settings.local.json             # per-contributor local config (gitignored)
 ├── .github/workflows/
 │   ├── second-brain.yml                # this repo's bootstrapped CI (dogfood)
@@ -52,8 +52,9 @@ repo/
   pre-commit, CI workflow, CLAUDE.md block).
 - The **git `pre-commit` hook and the CI workflow** live in
   `bootstrap/payload/` because they must be materialised into the
-  destination working tree (`.claude/hooks/pre-commit` via
-  `core.hooksPath`, `.github/workflows/`); the **Stop hook**
+  destination working tree — the pre-commit into the committed, configurable
+  hooks dir (`.githooks/pre-commit` by default) that `core.hooksPath` is
+  repointed at, the workflow into `.github/workflows/`; the **Stop hook**
   (`session-reminder.sh`) and the **SessionStart hook**
   (`bootstrap-reminder.sh`) live in `hooks/` because a plugin serves them
   read-only from its cache — neither needs anything bootstrap produces to
@@ -61,9 +62,10 @@ repo/
 - **`docs/` and `.claude/` at the repo root** are this repo's own Second
   Brain — a dogfooding instance, consumed via the local marketplace, not
   part of what gets distributed. `.claude/` keeps only the bootstrapped
-  `pre-commit` and the gitignored `settings.local.json`; the runtime
-  (skills, agent, Stop hook) comes from the installed plugin, not from
-  `.claude/`.
+  `pre-commit` (this repo predates the `.githooks` default, so the resolver
+  keeps it on `.claude/hooks`; fresh destinations get `.githooks/`) and the
+  gitignored `settings.local.json`; the runtime (skills, agent, Stop hook)
+  comes from the installed plugin, not from `.claude/`.
 - `.gitignore` excludes `.claude/settings.local.json` and `.vscode/`:
   per-contributor local config, never shared through the repo.
 - **`.github/workflows/plugin-version.yml`** is hand-authored and lives
@@ -71,4 +73,4 @@ repo/
   repo's own `plugin.json` version-bump discipline and is never
   distributed to a destination project (see ADR 0005).
 
-*Last updated: 2026-07-09 — verified against commit `5e5b0b9`.*
+*Last updated: 2026-07-28 — verified against commit `00727a6`.*

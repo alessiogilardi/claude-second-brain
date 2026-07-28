@@ -28,13 +28,24 @@ lives in the plugin; everything that must be committed is bootstrapped.
   and a marketplace catalog whose single plugin `source` is `.` (the repo
   root), so this repo is simultaneously the plugin and its marketplace.
 - **`bootstrap/bootstrap.sh`** (bash) — the deterministic scaffolder.
-  Create-only by default: copies `docs/`, appends the `CLAUDE.md` marker
-  block if absent, installs `.claude/hooks/pre-commit` and points
-  `core.hooksPath` at `.claude/hooks` (only when unset-and-ours or already
-  ours — never clobbers husky/other), and copies the CI workflow. It never
-  overwrites an existing file and never deletes. `--refresh-system` is the
-  only overwrite path, scoped to exactly the pre-commit hook, the CI
-  workflow, and the `CLAUDE.md` block *between its markers*.
+  Create-only for `docs/` and the CI workflow; appends the `CLAUDE.md`
+  marker block if absent. Installs the git pre-commit into a committed,
+  configurable hooks dir (`--hooks-dir`, default `.githooks`) and points
+  `core.hooksPath` at it (only when unset-and-ours or already ours — never
+  clobbers husky/other), and pins that hook to LF in the destination's
+  `.gitattributes` (idempotent, scoped to its own path) so a Windows
+  checkout can't CRLF-break the `#!/bin/sh` shebang. It never overwrites a
+  user's pre-commit: our check
+  is a marker-delimited block injected at the top of an existing hook
+  (running first, rejecting only, then falling through to the host's own
+  logic); a foreign `.git/hooks/pre-commit` is copied into the hooks dir
+  before the repoint so it isn't lost, and a pre-0.3 Second Brain hook is
+  replaced wholesale. The dir is resolved with precedence explicit
+  `--hooks-dir` > an existing Second Brain `core.hooksPath` (so pre-0.3
+  installs on `.claude/hooks` stay put and refresh writes there) >
+  `.githooks`. `--refresh-system` is the only overwrite path for our own
+  content, scoped to the pre-commit block, the CI workflow, and the
+  `CLAUDE.md` block *between its markers* (see ADR 0006).
 - **`bootstrap/payload/`** — the source content the bootstrap copies:
   `docs/` (placeholder set + `adr/template.md`), `git-pre-commit`,
   `workflows/second-brain.yml`, and `claude-md-block.md`.
@@ -86,9 +97,10 @@ plugin/repo boundary (see ADR 0002).
    the next fresh session in any repo lacking the `CLAUDE.md` marker, the
    SessionStart hook reminds the model to bootstrap.
 2. **Bootstrap the repo** — run `/second-brain:bootstrap` (which runs
-   `bootstrap.sh`). Create-only: scaffolds `docs/`, appends the `CLAUDE.md`
-   block, installs the git `pre-commit` + `core.hooksPath`, and copies the
-   CI workflow. Safe to re-run (everything reports `[SKIP]`).
+   `bootstrap.sh`). Scaffolds `docs/` (create-only), appends the `CLAUDE.md`
+   block, installs the git `pre-commit` into the committed hooks dir
+   (`.githooks` by default) and points `core.hooksPath` at it, and copies
+   the CI workflow. Safe to re-run (everything reports `[SKIP]`).
 3. **Onboard** (once per destination) — run the `second-brain:onboard`
    skill: replaces every `> Placeholder` marker under `docs/` with real
    content verified against that destination's code.
@@ -103,6 +115,10 @@ plugin/repo boundary (see ADR 0002).
 
 ## Relevant architectural decisions
 
+- [ADR 0006](./adr/0006-configurable-committed-hooks-dir.md) — the git
+  pre-commit lives in a committed, configurable hooks dir (default
+  `.githooks`), and an existing hook is extended by injecting a marker
+  block rather than being overwritten.
 - [ADR 0005](./adr/0005-semver-and-ci-enforced-version-bump.md) —
   three-tier semantic versioning for `plugin.json`, with a repo-specific
   CI check (not a local hook) enforcing that a bump happened.
@@ -116,4 +132,4 @@ plugin/repo boundary (see ADR 0002).
 - [ADR 0001](./adr/0001-manifest-gated-sync-for-system-owned-files.md) —
   the previous SHA-256-manifest install strategy, **superseded by 0003**.
 
-*Last updated: 2026-07-09 — verified against commit `5e5b0b9`.*
+*Last updated: 2026-07-28 — verified against commit `00727a6`.*
