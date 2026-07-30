@@ -25,9 +25,9 @@
 # EXCLUDE_PATTERN: files matching this are ignored when deciding whether
 # "source changed" -- edit it to fit the project (add more lockfiles,
 # generated files, vendored code, etc). The committed hooks dir (.githooks/
-# by default) and .claude/ are excluded so installing/refreshing the hook
-# itself never trips the check; a non-default --hooks-dir must be added here
-# by hand. Legitimate reasons to bypass with --no-verify: a WIP commit on a
+# by default), .claude/, and .gitattributes are excluded so installing or
+# refreshing the system files never trips the check; a non-default
+# --hooks-dir must be added here by hand. Legitimate reasons to bypass with --no-verify: a WIP commit on a
 # private branch you'll squash later, or a doc-only follow-up commit you are
 # about to make immediately after.
 #
@@ -45,7 +45,7 @@
 # never clobbers a host hook's own variables when injected.
 
 # >>> BEGIN SECOND BRAIN SYSTEM pre-commit >>>
-_sb_exclude='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/)|(^|/)tests?/'
+_sb_exclude='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$)|(^|/)tests?/'
 _sb_staged=$(git diff --cached --name-only)
 if [ -n "$_sb_staged" ]; then
     _sb_relevant=$(printf '%s\n' "$_sb_staged" | grep -vE "$_sb_exclude")

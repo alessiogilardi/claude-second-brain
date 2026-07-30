@@ -1,6 +1,6 @@
 {
   "name": "second-brain",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Docs-in-sync system: skills, a read-only docs reader agent, an end-of-session Stop hook, and a SessionStart bootstrap nudge, plus a deterministic git-bash bootstrap that scaffolds the repo-side files (docs/, CLAUDE.md block, git pre-commit, CI) into a destination project.",
   "author": { "name": "Alessio Gilardi" }
 }

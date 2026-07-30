@@ -136,7 +136,7 @@ second-brain plugin's `session-reminder.sh`) and the CI backstop
 changed" using the same `EXCLUDE_PATTERN`: it skips lockfiles (`*.lock`,
 `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`,
 `uv.lock`, `Cargo.lock`, `Gemfile.lock`), `.github/`, `.claude/`,
-`.githooks/`, and `tests?/` at any depth. If a project needs a different
+`.githooks/`, `.gitattributes`, and `tests?/` at any depth. If a project needs a different
 set (more generated/vendored paths, a narrower test match, or a non-default
 `--hooks-dir`), edit `EXCLUDE_PATTERN` in all three files together — they
 must stay mirrored (the pre-commit's copy lives inside its marker block, the

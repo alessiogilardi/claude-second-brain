@@ -16,7 +16,7 @@
 # dependencies: bash + git only (no uv, no python, no jq).
 set -uo pipefail
 
-EXCLUDE_PATTERN='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/)|(^|/)tests?/'
+EXCLUDE_PATTERN='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$)|(^|/)tests?/'
 DOCS_PATTERN='^docs/|^CLAUDE\.md$'
 
 # Loop guard: if we already blocked this stop, do nothing.

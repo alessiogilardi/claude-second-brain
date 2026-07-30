@@ -51,15 +51,23 @@ whereas gitignoring it is its inverse.
    wholesale.
 4. **Warn on shadowing.** Before repointing, other real (non-sample)
    `.git/hooks/*` scripts are reported so they can be moved into the dir.
-5. **Exclude the dir.** `\.githooks/` is added to `EXCLUDE_PATTERN` in all
-   three mirrors (ADR 0002); the injected block is derived from the payload
-   block, so the mirror stays at three copies, not four.
-6. **Pin the hook to LF.** Because the committed hook is a `#!/bin/sh`
-   script and a Windows checkout (`core.autocrlf=true`) would rewrite it to
-   CRLF — breaking the shebang with `bad interpreter: ^M` — the bootstrap
-   appends an idempotent `<hooks-dir>/pre-commit text eol=lf` rule to the
-   destination's `.gitattributes` (create-or-append, scoped to our own
-   file).
+5. **Exclude the dir and `.gitattributes`.** `\.githooks/` and
+   `\.gitattributes$` are added to `EXCLUDE_PATTERN` in all three mirrors
+   (ADR 0002) — the hooks dir and the LF-pin file are both system-managed, so
+   installing or refreshing them must not trip the docs-in-sync check. The
+   injected block is derived from the payload block, so the mirror stays at
+   three copies, not four.
+6. **Pin the hook to LF (repo-relative).** Because the committed hook is a
+   `#!/bin/sh` script and a Windows checkout (`core.autocrlf=true`) would
+   rewrite it to CRLF — breaking the shebang with `bad interpreter: ^M` — the
+   bootstrap appends an idempotent `<hooks-dir>/pre-commit text eol=lf` rule
+   to the destination's `.gitattributes` (create-or-append, scoped to our own
+   file). The path is always **repo-relative**: a `.gitattributes` pattern is
+   matched relative to the file, so an absolute path there matches nothing and
+   the pin silently fails. The resolver normalises an older install whose
+   `core.hooksPath` was stored absolute back to its repo-relative form (via
+   `git rev-parse --show-prefix`, which also fixes Windows 8.3 short names)
+   before it reaches either `.gitattributes` or `core.hooksPath`.
 
 ## Alternatives considered
 
@@ -103,4 +111,11 @@ whereas gitignoring it is its inverse.
   user-owned file) — additively and idempotently, one rule scoped to its own
   hook path — to keep the committed hook executable across platforms. It
   never rewrites rules it didn't add. A non-default `--hooks-dir` is pinned
-  at its own path.
+  at its own path. `.gitattributes` is itself excluded from the docs-in-sync
+  check, so the append never rejects the commit that installs it.
+- The hooks dir is always resolved to a repo-relative path, even when an
+  older install had stored `core.hooksPath` absolute: such a value is
+  normalised back to relative (and `core.hooksPath` rewritten to match) so it
+  survives clones and the `.gitattributes` pin actually applies. A foreign,
+  non-Second-Brain absolute `core.hooksPath` (another hook manager) is still
+  left untouched — normalisation only fires for our own marked hook.

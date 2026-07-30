@@ -94,6 +94,27 @@ copy_if_absent() {
     fi
 }
 
+# Echo the repo-relative form of a hooks-dir path. A committed, shared hooks
+# dir and the .gitattributes pattern that pins its hook to LF are both
+# repo-relative by definition: an absolute value survives no clone and, as a
+# .gitattributes pattern, matches nothing -- so the LF pin silently stops
+# working and the #!/bin/sh shebang breaks on a CRLF Windows checkout. An
+# absolute path inside the working tree is converted with git itself, which
+# normalises Windows 8.3 short names and case; a relative path (the default
+# and the only accepted --hooks-dir form) is echoed unchanged. A path outside
+# the tree yields an empty prefix and is left as-is for the caller to reject.
+relativize_hooks_dir() {
+    local p="$1" rel
+    case "$p" in
+        /*|[A-Za-z]:/*)
+            if [ -d "$p" ]; then
+                rel="$(git -C "$p" rev-parse --show-prefix 2>/dev/null | sed 's:/*$::')"
+                [ -n "$rel" ] && p="$rel"
+            fi ;;
+    esac
+    printf '%s\n' "$p"
+}
+
 # Resolve the hooks dir that core.hooksPath points at and where pre-commit
 # is installed. Precedence:
 #   1. explicit --hooks-dir;
@@ -101,6 +122,8 @@ copy_if_absent() {
 #      configurable-dir change keep their location (e.g. .claude/hooks) and
 #      --refresh-system writes there;
 #   3. the default (.githooks), committed and shared like any other file.
+# The value is always emitted repo-relative (see relativize_hooks_dir): an
+# older install whose core.hooksPath was stored absolute is normalised here.
 resolve_hooks_dir() {
     if [ -n "$HOOKS_DIR_ARG" ]; then
         printf '%s\n' "$HOOKS_DIR_ARG"
@@ -110,7 +133,7 @@ resolve_hooks_dir() {
     current="$(git config --get core.hooksPath 2>/dev/null || true)"
     if [ -n "$current" ] && [ -f "$current/pre-commit" ] \
         && grep -qF "SECOND BRAIN SYSTEM" "$current/pre-commit" 2>/dev/null; then
-        printf '%s\n' "$current"
+        relativize_hooks_dir "$current"
         return
     fi
     printf '%s\n' "$DEFAULT_HOOKS_DIR"
@@ -279,12 +302,21 @@ install_or_inject_precommit
 if git rev-parse --git-dir >/dev/null 2>&1; then
     ensure_gitattributes_lf
     current="$(git config --get core.hooksPath || true)"
+    # Compare on the repo-relative form so an older install that stored the
+    # path absolute is recognised as ours (not mistaken for a foreign hook
+    # manager) and rewritten to the portable relative form.
+    current_rel="$(relativize_hooks_dir "$current")"
     if [ -z "$current" ]; then
         warn_shadowed_git_hooks
         git config core.hooksPath "$HOOKS_DIR"
         echo "  [GIT] core.hooksPath set to $HOOKS_DIR"
-    elif [ "$current" = "$HOOKS_DIR" ]; then
-        echo "  [GIT] core.hooksPath already set to $HOOKS_DIR"
+    elif [ "$current_rel" = "$HOOKS_DIR" ]; then
+        if [ "$current" = "$HOOKS_DIR" ]; then
+            echo "  [GIT] core.hooksPath already set to $HOOKS_DIR"
+        else
+            git config core.hooksPath "$HOOKS_DIR"
+            echo "  [GIT] core.hooksPath normalized to relative $HOOKS_DIR (was $current)"
+        fi
     elif [ "$FORCE_HOOKSPATH" = 1 ]; then
         warn_shadowed_git_hooks
         git config core.hooksPath "$HOOKS_DIR"
