@@ -52,6 +52,14 @@ hook. Verification is manual but scriptable, and splits in two.
   `<hooks-dir>/pre-commit text eol=lf` rule (created if absent, appended if
   present without disturbing existing rules, skipped if already there), so
   the `#!/bin/sh` hook can't be CRLF-broken by a Windows checkout;
+- **LF pin self-heal** — seed `.gitattributes` with an absolute pin
+  (`C:/…/.githooks/pre-commit text eol=lf` and/or a `/unix/abs/…` one), a
+  duplicate `# [SECOND BRAIN SYSTEM]` comment, and a foreign rule: the run
+  reports `[FIX]`, collapses them into a single repo-relative entry under one
+  comment, leaves the foreign rules untouched, and a re-run is a byte-for-byte
+  no-op (`[SKIP]`). A foreign *relative* `pre-commit` pin (e.g.
+  `tools/hooks/pre-commit`) must survive; with a legacy `.claude/hooks`
+  install the rewritten entry must point there, not at `.githooks`;
 - **Stop hook** — `session-reminder.sh` blocks on source-without-docs,
   the `stop_hook_active` loop-guard suppresses a re-block, and a clean or
   docs-including tree does not block;

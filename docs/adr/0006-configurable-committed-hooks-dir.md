@@ -67,7 +67,16 @@ whereas gitignoring it is its inverse.
    the pin silently fails. The resolver normalises an older install whose
    `core.hooksPath` was stored absolute back to its repo-relative form (via
    `git rev-parse --show-prefix`, which also fixes Windows 8.3 short names)
-   before it reaches either `.gitattributes` or `core.hooksPath`.
+   before it reaches either `.gitattributes` or `core.hooksPath`. That
+   normalisation only fixes what is *written next*, so
+   `normalize_gitattributes_entry` additionally rewrites an absolute pin an
+   earlier install already left in `.gitattributes`: it is dead as a pattern,
+   and because the correct relative entry is then missing, every later run
+   appended another block — accumulating a dead rule plus a duplicate
+   comment. Only lines pinning a `*/pre-commit` to `eol=lf` by absolute path
+   are touched (they can only be ours); duplicates of our entry and our
+   comment collapse to the first occurrence, and every other rule in the
+   file is passed through untouched.
 
 ## Alternatives considered
 
@@ -110,9 +119,14 @@ whereas gitignoring it is its inverse.
 - The bootstrap now writes into the destination's `.gitattributes` (a
   user-owned file) — additively and idempotently, one rule scoped to its own
   hook path — to keep the committed hook executable across platforms. It
-  never rewrites rules it didn't add. A non-default `--hooks-dir` is pinned
-  at its own path. `.gitattributes` is itself excluded from the docs-in-sync
-  check, so the append never rejects the commit that installs it.
+  never rewrites rules it didn't add, with one deliberate exception: an
+  absolute `*/pre-commit text eol=lf` pin left by an older install is
+  rewritten in place (see Decision 6). That is a narrow break with the
+  "create-only, never modify user content" guarantee, accepted because the
+  line is provably ours, is inert where it stands, and otherwise multiplies
+  on every run. A non-default `--hooks-dir` is pinned at its own path.
+  `.gitattributes` is itself excluded from the docs-in-sync check, so the
+  append never rejects the commit that installs it.
 - The hooks dir is always resolved to a repo-relative path, even when an
   older install had stored `core.hooksPath` absolute: such a value is
   normalised back to relative (and `core.hooksPath` rewritten to match) so it

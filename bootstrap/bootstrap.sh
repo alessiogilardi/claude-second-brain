@@ -264,15 +264,46 @@ warn_shadowed_git_hooks() {
 # to CRLF, the shebang breaks with "bad interpreter: ^M". Idempotent
 # create-or-append, scoped to our own file so a foreign gitattributes setup
 # for other paths is never disturbed.
+GITATTR_COMMENT='# [SECOND BRAIN SYSTEM] keep the git hook LF so #!/bin/sh works on every platform'
+
+# Self-heal a pin written absolute by a pre-0.3.2 install (before the hooks
+# dir was normalised to repo-relative). As a .gitattributes pattern an
+# absolute path matches nothing, so that pin is silently dead -- and because
+# the correct relative entry is then missing, every later run appends another
+# block, accumulating a dead rule plus a duplicate comment. The line is
+# unambiguously ours (it pins a `*/pre-commit` to eol=lf), so it is rewritten
+# in place rather than left to rot; duplicates of our entry and our comment
+# collapse to the first occurrence. Nothing else in the file is touched.
+normalize_gitattributes_entry() {
+    local entry="$1" tmp
+    [ -f .gitattributes ] || return 0
+    grep -qE '^([A-Za-z]:)?/[^[:space:]]*pre-commit[[:space:]]+text[[:space:]]+eol=lf[[:space:]]*$' .gitattributes || return 0
+    tmp="$(mktemp)"
+    awk -v e="$entry" -v c="$GITATTR_COMMENT" '
+        $0 == c { if (cseen++) next; print; next }
+        $0 == e { if (eseen++) next; print; next }
+        /^([A-Za-z]:)?\/[^[:space:]]*pre-commit[[:space:]]+text[[:space:]]+eol=lf[[:space:]]*$/ {
+            if (eseen++) next
+            print e
+            next
+        }
+        { print }
+    ' .gitattributes > "$tmp"
+    cat "$tmp" > .gitattributes
+    rm -f "$tmp"
+    echo "  [FIX] .gitattributes (dead absolute pre-commit pin rewritten to $entry)"
+}
+
 ensure_gitattributes_lf() {
     local entry="$HOOKS_DIR/pre-commit text eol=lf"
+    normalize_gitattributes_entry "$entry"
     if [ -f .gitattributes ] && grep -qF "$entry" .gitattributes; then
         echo "  [SKIP] .gitattributes ($HOOKS_DIR/pre-commit eol=lf present)"
         return
     fi
     {
         [ -s .gitattributes ] && printf '\n'
-        printf '# [SECOND BRAIN SYSTEM] keep the git hook LF so #!/bin/sh works on every platform\n'
+        printf '%s\n' "$GITATTR_COMMENT"
         printf '%s\n' "$entry"
     } >> .gitattributes
     echo "  [CREATE] .gitattributes ($HOOKS_DIR/pre-commit eol=lf)"
