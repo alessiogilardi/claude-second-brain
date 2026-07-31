@@ -9,7 +9,7 @@ Accepted
 `.claude-plugin/plugin.json`'s `version` field is how `/plugin
 marketplace update` decides whether an installed consumer's plugin cache
 needs refreshing: a content-only change to `hooks/`, `skills/`,
-`agents/`, or `commands/` with no version bump silently never propagates
+`agents/`, `commands/`, or `bootstrap/` with no version bump silently never propagates
 to consumers who already installed the plugin (discovered the hard way —
 see the `0.2.1` bump commit, which had no semantic meaning attached to
 what changed). There was no documented rule for what the three version
@@ -43,7 +43,7 @@ destination repos have no `plugin.json` and don't publish a plugin.
    (`.github/workflows/plugin-version.yml`, hand-authored, deliberately
    outside `bootstrap/payload/` so it is never distributed to
    consumers). On every pull request and on every push to `main` it
-   fails if `hooks/`, `skills/`, `agents/`, or `commands/` changed
+   fails if `hooks/`, `skills/`, `agents/`, `commands/`, or `bootstrap/` changed
    without `.claude-plugin/plugin.json` also changing, and separately
    validates that a changed version is
    well-formed `MAJOR.MINOR.PATCH` and strictly greater than the base

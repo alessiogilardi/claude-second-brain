@@ -137,7 +137,7 @@ plugin cache when `version` changes — a content-only change with no
 version bump silently never propagates. A CI check
 (`.github/workflows/plugin-version.yml`, this repo's own tooling, not
 shipped to consumers) fails a PR that touches `hooks/`, `skills/`,
-`agents/`, or `commands/` without also bumping `version`, and rejects a
+`agents/`, `commands/`, or `bootstrap/` without also bumping `version`, and rejects a
 malformed or non-increasing version. It cannot judge which tier
 (major/minor/patch) is correct for a given change — that stays a human
 call; see [ADR 0005](./docs/adr/0005-semver-and-ci-enforced-version-bump.md).

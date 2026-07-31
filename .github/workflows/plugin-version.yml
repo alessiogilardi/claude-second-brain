@@ -33,7 +33,11 @@ jobs:
         shell: bash
         run: |
           set -e
-          RUNTIME_PATTERN='^(hooks/|skills/|agents/|commands/)'
+          # bootstrap/ counts as runtime: the plugin ships it and the slash
+          # commands run it as ${CLAUDE_PLUGIN_ROOT}/bootstrap/bootstrap.sh, so
+          # a bootstrap-only fix with no version bump never reaches an
+          # installed consumer either.
+          RUNTIME_PATTERN='^(hooks/|skills/|agents/|commands/|bootstrap/)'
 
           base_sha="${{ github.event.pull_request.base.sha || github.event.before }}"
           head_sha="${{ github.event.pull_request.head.sha || github.sha }}"
@@ -52,7 +56,7 @@ jobs:
           version_changed=$(printf '%s\n' "$changed_files" | grep -Fx '.claude-plugin/plugin.json' || true)
 
           if [ -n "$runtime_changed" ] && [ -z "$version_changed" ]; then
-            echo "::error::[PLUGIN VERSION] hooks/, skills/, agents/, or commands/ changed but .claude-plugin/plugin.json was not. Bump \"version\" (see docs/patterns.md) so /plugin marketplace update propagates this change to installed consumers."
+            echo "::error::[PLUGIN VERSION] hooks/, skills/, agents/, commands/, or bootstrap/ changed but .claude-plugin/plugin.json was not. Bump \"version\" (see docs/patterns.md) so /plugin marketplace update propagates this change to installed consumers."
             exit 1
           fi
 

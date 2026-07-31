@@ -70,7 +70,7 @@ There is no build step, package manager, or automated test suite (see
   filters belong in the destination's create-only `.second-brain.conf`,
   never inside the refreshed files (ADR 0007).
 - Bump `.claude-plugin/plugin.json`'s `version` (`MAJOR.MINOR.PATCH`) on
-  every change under `hooks/`, `skills/`, `agents/`, or `commands/` —
+  every change under `hooks/`, `skills/`, `agents/`, `commands/`, or `bootstrap/` —
   `/plugin marketplace update` only refreshes installed consumers when
   `version` changes. `.github/workflows/plugin-version.yml` fails a PR
   that misses this, but cannot judge which tier is correct — pick the
