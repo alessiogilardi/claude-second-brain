@@ -22,14 +22,22 @@
 # so a host hook's own logic still runs. `bootstrap.sh --refresh-system`
 # rewrites just the content between the markers.
 #
-# EXCLUDE_PATTERN: files matching this are ignored when deciding whether
-# "source changed" -- edit it to fit the project (add more lockfiles,
-# generated files, vendored code, etc). The committed hooks dir (.githooks/
-# by default), .claude/, and .gitattributes are excluded so installing or
-# refreshing the system files never trips the check; a non-default
-# --hooks-dir must be added here by hand. Legitimate reasons to bypass with --no-verify: a WIP commit on a
-# private branch you'll squash later, or a doc-only follow-up commit you are
-# about to make immediately after.
+# TUNING: do NOT edit the patterns below -- they are rewritten by every
+# --refresh-system. Put project-specific filters in the committed
+# .second-brain.conf at the repo root instead (create-only, never refreshed);
+# it is read here, in the plugin's Stop hook, and in the CI workflow:
+#   * SB_INCLUDE_PATTERN -- allowlist; only matching paths count as source
+#     (empty = all). Applied to the source side only, so docs/ and CLAUDE.md
+#     stay recognised as documentation regardless. Fail-open by nature: a new
+#     directory missing from the allowlist is never checked.
+#   * SB_EXCLUDE_EXTRA   -- OR-ed with the default denylist below.
+#   * SB_EXCLUDE_PATTERN -- replaces the default denylist entirely.
+# The defaults exclude the committed hooks dir (.githooks/ by default),
+# .claude/, .gitattributes and .second-brain.conf so installing or refreshing
+# the system files never trips the check; a non-default --hooks-dir must be
+# added via the conf. Legitimate reasons to bypass with --no-verify: a WIP
+# commit on a private branch you'll squash later, or a doc-only follow-up
+# commit you are about to make immediately after.
 #
 # tests?/ intentionally matches at any depth (via "(^|/)"), not just
 # top-level, so nested test dirs (e.g. src/pkg/tests/) are excluded too.
@@ -40,17 +48,44 @@
 # *config* files specifically (pytest.ini, conftest.py, CI test steps)
 # if stronger enforcement is needed.
 #
-# Keep EXCLUDE_PATTERN byte-identical with the plugin's session-reminder.sh
-# and the CI workflow (ADR 0002). Variables are _sb_-prefixed so the block
-# never clobbers a host hook's own variables when injected.
+# Keep the default patterns and the .second-brain.conf reader byte-identical
+# with the plugin's session-reminder.sh and the CI workflow (ADR 0002).
+# Variables and functions are _sb_-prefixed, and the reader is unset at the
+# end, so the block never clobbers a host hook's own names when injected.
 
 # >>> BEGIN SECOND BRAIN SYSTEM pre-commit >>>
-_sb_exclude='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$)|(^|/)tests?/'
+_sb_default_exclude='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$|\.second-brain\.conf$)|(^|/)tests?/'
+_sb_docs_pattern='^docs/|^CLAUDE\.md$'
+
+# Read KEY from the .second-brain.conf-style file $1. Last assignment wins;
+# surrounding single/double quotes and trailing blanks are stripped; a missing
+# file or key yields the empty string (caller falls back to the default).
+_sb_conf_get() {
+    [ -f "$1" ] || return 0
+    sed -n "s/^[[:space:]]*$2[[:space:]]*=[[:space:]]*//p" "$1" |
+        sed -e 's/[[:space:]]*$//' -e 's/^\(['"'"'"]\)\(.*\)\1$/\2/' |
+        tail -n 1
+}
+
+_sb_root=$(git rev-parse --show-toplevel 2>/dev/null) || _sb_root="."
+[ -n "$_sb_root" ] || _sb_root="."
+_sb_conf="$_sb_root/.second-brain.conf"
+_sb_include=$(_sb_conf_get "$_sb_conf" SB_INCLUDE_PATTERN)
+_sb_exclude=$(_sb_conf_get "$_sb_conf" SB_EXCLUDE_PATTERN)
+_sb_extra=$(_sb_conf_get "$_sb_conf" SB_EXCLUDE_EXTRA)
+[ -n "$_sb_exclude" ] || _sb_exclude="$_sb_default_exclude"
+if [ -n "$_sb_extra" ]; then
+    _sb_exclude="($_sb_exclude)|($_sb_extra)"
+fi
+
 _sb_staged=$(git diff --cached --name-only)
 if [ -n "$_sb_staged" ]; then
-    _sb_relevant=$(printf '%s\n' "$_sb_staged" | grep -vE "$_sb_exclude")
-    _sb_docs=$(printf '%s\n' "$_sb_relevant" | grep -E '^docs/|^CLAUDE\.md$')
-    _sb_source=$(printf '%s\n' "$_sb_relevant" | grep -vE '^docs/|^CLAUDE\.md$')
+    _sb_relevant=$(printf '%s\n' "$_sb_staged" | grep -vE "$_sb_exclude") || true
+    _sb_docs=$(printf '%s\n' "$_sb_relevant" | grep -E "$_sb_docs_pattern") || true
+    _sb_source=$(printf '%s\n' "$_sb_relevant" | grep -vE "$_sb_docs_pattern") || true
+    if [ -n "$_sb_include" ]; then
+        _sb_source=$(printf '%s\n' "$_sb_source" | grep -E "$_sb_include") || true
+    fi
     if [ -n "$_sb_source" ] && [ -z "$_sb_docs" ]; then
         echo ""
         echo "=================================================================="
@@ -61,12 +96,15 @@ if [ -n "$_sb_staged" ]; then
         echo "  or in the CLAUDE.md file."
         echo ""
         echo "  Claude, run the second-brain:update skill, then retry the"
-        echo "  commit. If this is a false positive or a legitimate exception,"
-        echo "  see the second-brain:update skill and use"
+        echo "  commit. If this is a false positive, add the path to"
+        echo "  SB_EXCLUDE_EXTRA in .second-brain.conf. For a legitimate"
+        echo "  one-off exception, see the second-brain:update skill and use"
         echo "  git commit --no-verify."
         echo ""
         echo "=================================================================="
+        unset -f _sb_conf_get 2>/dev/null || true
         exit 1
     fi
 fi
+unset -f _sb_conf_get 2>/dev/null || true
 # <<< END SECOND BRAIN SYSTEM pre-commit <<<

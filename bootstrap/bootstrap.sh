@@ -27,8 +27,12 @@
 #
 # The only overwrite path is --refresh-system, and it is scoped to exactly
 # the git pre-commit hook, the CI workflow, and the CLAUDE.md block BETWEEN
-# its markers -- docs/ and any user prose outside the markers are never
-# touched.
+# its markers -- docs/, .second-brain.conf, and any user prose outside the
+# markers are never touched. .second-brain.conf is where a destination tunes
+# the path filters (SB_INCLUDE_PATTERN / SB_EXCLUDE_EXTRA /
+# SB_EXCLUDE_PATTERN) precisely because it is create-only: filters edited
+# there survive every refresh, unlike the patterns inside the refreshed
+# pre-commit block and CI workflow.
 #
 # Usage: bootstrap.sh [TARGET_DIR] [--refresh-system] [--force-hookspath]
 #                     [--hooks-dir DIR]
@@ -334,8 +338,13 @@ fi
 # 4. CI workflow (create-only).
 copy_if_absent "$PAYLOAD/workflows/second-brain.yml" ".github/workflows/second-brain.yml"
 
-# 5. --refresh-system: overwrite ONLY the two system files and the
-#    CLAUDE.md block between its markers. docs/ and user prose untouched.
+# 5. Path-filter config (create-only, and deliberately NOT refreshed below:
+#    it is the destination's own file, read by all three enforcement points).
+copy_if_absent "$PAYLOAD/second-brain.conf" ".second-brain.conf"
+
+# 6. --refresh-system: overwrite ONLY the two system files and the
+#    CLAUDE.md block between its markers. docs/, .second-brain.conf and user
+#    prose untouched.
 if [ "$REFRESH" = 1 ]; then
     echo ""
     echo "  Refreshing system files ..."
@@ -359,6 +368,13 @@ if [ "$REFRESH" = 1 ]; then
     mkdir -p ".github/workflows"
     cp "$PAYLOAD/workflows/second-brain.yml" ".github/workflows/second-brain.yml"
     echo "  [REFRESH] .github/workflows/second-brain.yml"
+
+    if [ -f ".second-brain.conf" ]; then
+        echo "  [SKIP] .second-brain.conf (create-only; your path filters are preserved)"
+    else
+        cp "$PAYLOAD/second-brain.conf" ".second-brain.conf"
+        echo "  [CREATE] .second-brain.conf (was missing)"
+    fi
 
     if [ -f CLAUDE.md ] && grep -qF "$BEGIN" CLAUDE.md; then
         tmp="$(mktemp)"

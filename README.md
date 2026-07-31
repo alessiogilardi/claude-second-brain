@@ -19,6 +19,7 @@ claude-second-brain-skill/
 │       ├── docs/                       # placeholder doc set + adr/template.md
 │       ├── git-pre-commit              # the git pre-commit hook source
 │       ├── workflows/second-brain.yml  # the CI backstop source
+│       ├── second-brain.conf           # path-filter config (create-only in the destination)
 │       └── claude-md-block.md          # the marker-delimited CLAUDE.md block
 ├── hooks/
 │   ├── hooks.json                  # wires Stop -> session-reminder.sh, SessionStart -> bootstrap-reminder.sh
@@ -79,7 +80,11 @@ It runs `bootstrap/bootstrap.sh` (you can also call
    its own path) so a Windows checkout can't CRLF-break the `#!/bin/sh`
    shebang;
 4. copies the CI workflow to `.github/workflows/second-brain.yml`
-   (create-only).
+   (create-only);
+5. copies `.second-brain.conf` to the repo root (create-only) — the one
+   place to tune which paths count as a source change, and the one system
+   file `--refresh-system` never rewrites (see *Tuning what counts as a
+   "source change"* below).
 
 It never deletes and never overwrites your own content, so an accidental
 re-run is a no-op (see [ADR 0006](./docs/adr/0006-configurable-committed-hooks-dir.md)).
@@ -144,18 +149,38 @@ call; see [ADR 0005](./docs/adr/0005-semver-and-ci-enforced-version-bump.md).
   `bash` + `git` only; there is no `uv`, Python, or PowerShell dependency.
 - **Claude Code** with plugin support (`/plugin`).
 
-## Customizing the pre-commit hook
+## Tuning what counts as a "source change"
 
 The committed pre-commit (`.githooks/pre-commit` by default) is a syntactic
 check, not a semantic one: it only verifies that *some* file under `docs/`
-or `CLAUDE.md` was staged alongside source changes. Its check lives inside a
-`# >>> BEGIN/END SECOND BRAIN SYSTEM pre-commit <<<` block; the
-`EXCLUDE_PATTERN` variable there lists paths ignored when deciding whether
-"source changed" — add more lockfiles, generated files, or vendored paths
-(or a non-default `--hooks-dir`) if the default set (tests, CI, common
-lockfiles, `.claude/`, `.githooks/`) doesn't fit the project. If you change
-it, keep it byte-identical across the three mirrors (the pre-commit block,
-the plugin's `session-reminder.sh`, and the CI workflow — see ADR 0002).
+or `CLAUDE.md` was staged alongside source changes.
+
+Which paths count is configured in **`.second-brain.conf`** at the repo
+root — one file, read by all three enforcement points (the pre-commit, the
+plugin's Stop hook, and the CI workflow). It is create-only: unlike the
+pre-commit block and the CI workflow, it is **never** rewritten by
+`/second-brain:refresh`, so this is the only place your filters survive a
+plugin update. It ships with every key commented out; leaving it untouched
+keeps the built-in defaults (and future improvements to them).
+
+| Key | Effect |
+|---|---|
+| `SB_EXCLUDE_EXTRA` | Added to the default denylist. **The usual fix for a false positive** — e.g. `'^(vendor/\|migrations/)'`. |
+| `SB_INCLUDE_PATTERN` | Allowlist: only matching paths count as source (empty = all). Applied to the source side only, so `docs/`+`CLAUDE.md` stay recognized as documentation whatever it says. |
+| `SB_EXCLUDE_PATTERN` | Replaces the built-in denylist entirely (tests, CI, common lockfiles, `.claude/`, `.githooks/`, `.gitattributes`, `.second-brain.conf`). Use `'^$'` to disable exclusions. |
+
+⚠️ **The allowlist is fail-open.** A denylist errs toward false positives —
+noisy but visible. `SB_INCLUDE_PATTERN` errs the other way: a directory you
+add to the project and forget to add there is never checked, and your docs
+drift with nothing to tell you. Reach for `SB_EXCLUDE_EXTRA` first, and use
+the allowlist only when the project's source really lives in a fixed set of
+directories. See
+[ADR 0007](./docs/adr/0007-externalized-path-filters-and-opt-in-allowlist.md).
+
+Note that a PR can widen these filters as easily as it can edit the
+workflow itself — review `.second-brain.conf` changes like any other
+enforcement change.
+
 Bypassing with `git commit --no-verify` is legitimate for a WIP commit on
 a private branch you'll squash later, or a doc-only follow-up commit — don't
 touch `docs/` just to satisfy the hook ("doc-touch"); see the

@@ -17,6 +17,19 @@ hook. Verification is manual but scriptable, and splits in two.
   (compare hashes; still one block);
 - **pre-commit** — staging source without docs is rejected with
   `COMMIT REJECTED`; staging source + docs passes;
+- **path filters** (`.second-brain.conf`, ADR 0007) — with a pristine conf
+  (all keys commented out) behaviour is identical to the built-in defaults,
+  and so is a run with the file deleted entirely; `SB_INCLUDE_PATTERN='^src/'`
+  makes a commit touching only `app/` pass while `src/` still rejects, and
+  `src/` + `docs/` must still pass (the allowlist must not filter the docs
+  side); `SB_EXCLUDE_EXTRA='^vendor/'` lets a `vendor/`-only commit through
+  while `src/` still rejects; values parse bare, single- or double-quoted and
+  with trailing blanks; staging only `.second-brain.conf` passes (it is in
+  the default denylist); the same assertions hold for the Stop hook and for
+  the CI workflow's `run:` script (extract it and feed it two SHAs);
+- **conf survives refresh** — a custom key added to `.second-brain.conf`
+  is still there after `--refresh-system` (`[SKIP] … create-only`), and the
+  file is created if it was missing;
 - **configurable hooks dir** — `--hooks-dir tools/hooks` installs there and
   points `core.hooksPath` at it; an absolute path, a `..` path, or a
   missing value is rejected with `[ERROR]`;
@@ -51,9 +64,11 @@ hook. Verification is manual but scriptable, and splits in two.
   CI workflow, and the CLAUDE.md block between markers, preserving user
   prose around it and leaving `docs/` byte-identical.
 
-Also check the ADR-0002 invariant: `EXCLUDE_PATTERN` is byte-identical
-across `bootstrap/payload/git-pre-commit`, `hooks/session-reminder.sh`,
-and `bootstrap/payload/workflows/second-brain.yml`.
+Also check the ADR-0002 invariant: the default exclude pattern, the docs
+pattern, and the `.second-brain.conf` reader are byte-identical across
+`bootstrap/payload/git-pre-commit`, `hooks/session-reminder.sh`, and
+`bootstrap/payload/workflows/second-brain.yml` (modulo the `_sb_` prefixes
+the pre-commit block uses to stay collision-free inside a host hook).
 
 **Plugin version bump check** (`.github/workflows/plugin-version.yml`,
 repo-specific, not part of the deterministic core above since it only
@@ -72,4 +87,4 @@ a real PR.
 If a framework is introduced later, the deterministic core above is the
 natural first suite (e.g. a committed `verify.sh` or a bats test file).
 
-*Last updated: 2026-07-28 — verified against commit `00727a6`.*
+*Last updated: 2026-07-31 — verified against commit `81606ed`.*

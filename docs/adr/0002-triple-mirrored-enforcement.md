@@ -22,21 +22,24 @@ requirement now spans that plugin/repo boundary.
 
 ## Decision
 
-Implement the same syntactic check (`EXCLUDE_PATTERN` regex + "source
-changed without a matching docs change" logic) independently in three
-places, kept mirrored by convention rather than shared code:
+Implement the same syntactic check (path-filter regexes + "source changed
+without a matching docs change" logic) independently in three places, kept
+mirrored by convention rather than shared code. Since ADR 0007 the mirrored
+part is the *default* patterns plus the `.second-brain.conf` reader —
+per-project filters live in that single committed file and are therefore
+shared by construction, not by convention:
 
 1. `bootstrap/payload/git-pre-commit` (POSIX sh) — bootstrapped into the
    destination's committed hooks dir (`.githooks/pre-commit` by default, or
    injected as a marker block into an existing hook — see ADR 0006); fast
    local feedback at commit time. The check lives inside the hook's
    `# >>> BEGIN/END SECOND BRAIN SYSTEM pre-commit <<<` block, which is the
-   canonical copy of `EXCLUDE_PATTERN` for both a freshly installed hook and
-   an injected one, so the mirror stays at three files, not four.
+   canonical copy of the default patterns for both a freshly installed hook
+   and an injected one, so the mirror stays at three files, not four.
 2. `hooks/session-reminder.sh` (bash, plugin Stop hook) — served from the
    plugin cache; catches uncommitted drift at end-of-session, before
    anything is even staged. Bash + git only (no `uv`/Python/`jq`), so its
-   `EXCLUDE_PATTERN` is a byte-identical shell string to the pre-commit's.
+   default patterns are byte-identical shell strings to the pre-commit's.
 3. `bootstrap/payload/workflows/second-brain.yml` (GitHub Actions,
    bootstrapped into `.github/workflows/`) — re-applies the check against
    the full PR diff; travels with the repo and can't be skipped with
@@ -63,16 +66,18 @@ places, kept mirrored by convention rather than shared code:
 - Enforcement survives a skipped or impossible-to-run local bootstrap (CI
   still catches it) while keeping the fast local feedback loop for
   developers who did bootstrap.
-- The three implementations must be manually kept in sync — a change to
-  `EXCLUDE_PATTERN` in one file that isn't mirrored in the other two
-  silently reintroduces the exact gap this design exists to close. This is
-  documented at the top of all three files as an explicit maintenance
-  requirement, not caught automatically.
-- The mirror now crosses a distribution boundary: an `EXCLUDE_PATTERN` fix
+- The three implementations must be manually kept in sync — a change to a
+  default pattern (or to the conf reader) in one file that isn't mirrored
+  in the other two silently reintroduces the exact gap this design exists
+  to close. This is documented at the top of all three files as an explicit
+  maintenance requirement, not caught automatically.
+- The mirror now crosses a distribution boundary: a default-pattern fix
   reaches the plugin's Stop hook via `/plugin marketplace update`, but the
   committed pre-commit and CI copies in *already-bootstrapped* destinations
   only pick it up when someone runs `/second-brain:refresh`
   (`--refresh-system`). A drift window therefore exists per destination
-  until refreshed.
+  until refreshed. Per-project filters are exempt: they live in the
+  destination's single `.second-brain.conf` (ADR 0007), so they cannot drift
+  between the three points and are never rewritten by a refresh.
 
-*Last updated: 2026-07-08 — verified against commit `b595503`.*
+*Last updated: 2026-07-31 — verified against commit `81606ed`.*

@@ -64,8 +64,11 @@ There is no build step, package manager, or automated test suite (see
   `bootstrap/payload/` content committed into a destination (`docs/`,
   `CLAUDE.md` block, git pre-commit, CI) is load-bearing, not incidental —
   get it wrong and a destination's hand-edits get clobbered, or a system
-  update stops propagating. `EXCLUDE_PATTERN` must stay byte-identical
-  across the pre-commit, the Stop hook, and the CI workflow (ADR 0002).
+  update stops propagating. The default path patterns and the
+  `.second-brain.conf` reader must stay byte-identical across the
+  pre-commit, the Stop hook, and the CI workflow (ADR 0002); per-project
+  filters belong in the destination's create-only `.second-brain.conf`,
+  never inside the refreshed files (ADR 0007).
 - Bump `.claude-plugin/plugin.json`'s `version` (`MAJOR.MINOR.PATCH`) on
   every change under `hooks/`, `skills/`, `agents/`, or `commands/` —
   `/plugin marketplace update` only refreshes installed consumers when

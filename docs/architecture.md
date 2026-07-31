@@ -28,8 +28,8 @@ lives in the plugin; everything that must be committed is bootstrapped.
   and a marketplace catalog whose single plugin `source` is `.` (the repo
   root), so this repo is simultaneously the plugin and its marketplace.
 - **`bootstrap/bootstrap.sh`** (bash) — the deterministic scaffolder.
-  Create-only for `docs/` and the CI workflow; appends the `CLAUDE.md`
-  marker block if absent. Installs the git pre-commit into a committed,
+  Create-only for `docs/`, the CI workflow and `.second-brain.conf`;
+  appends the `CLAUDE.md` marker block if absent. Installs the git pre-commit into a committed,
   configurable hooks dir (`--hooks-dir`, default `.githooks`) and points
   `core.hooksPath` at it (only when unset-and-ours or already ours — never
   clobbers husky/other), and pins that hook to LF in the destination's
@@ -48,7 +48,14 @@ lives in the plugin; everything that must be committed is bootstrapped.
   `CLAUDE.md` block *between its markers* (see ADR 0006).
 - **`bootstrap/payload/`** — the source content the bootstrap copies:
   `docs/` (placeholder set + `adr/template.md`), `git-pre-commit`,
-  `workflows/second-brain.yml`, and `claude-md-block.md`.
+  `workflows/second-brain.yml`, `claude-md-block.md`, and
+  `second-brain.conf`.
+- **`.second-brain.conf`** (in the destination) — the single place a
+  project tunes which paths count as source: `SB_INCLUDE_PATTERN`
+  (allowlist, applied to the source side only), `SB_EXCLUDE_EXTRA` (added
+  to the default denylist), `SB_EXCLUDE_PATTERN` (replaces it). Read — by
+  parsing, never by sourcing — by all three enforcement points, and
+  create-only so `--refresh-system` never reverts it (see ADR 0007).
 - **`hooks/hooks.json` + `hooks/session-reminder.sh`** — the plugin's Stop
   hook. `hooks.json` wires the Stop event to
   `bash "${CLAUDE_PLUGIN_ROOT}/hooks/session-reminder.sh"`. The script
@@ -85,8 +92,10 @@ lives in the plugin; everything that must be committed is bootstrapped.
 
 The `pre-commit` hook and the CI workflow live in `bootstrap/payload/`
 (bootstrapped into the consuming repo), while `session-reminder.sh` lives
-in the plugin — so the triple-mirrored `EXCLUDE_PATTERN` now spans the
-plugin/repo boundary (see ADR 0002).
+in the plugin — so the triple-mirrored default patterns and conf reader
+now span the plugin/repo boundary (see ADR 0002); the per-project filter
+values do not, since all three read the destination's single
+`.second-brain.conf` (ADR 0007).
 
 ## Main flows
 
@@ -100,7 +109,8 @@ plugin/repo boundary (see ADR 0002).
    `bootstrap.sh`). Scaffolds `docs/` (create-only), appends the `CLAUDE.md`
    block, installs the git `pre-commit` into the committed hooks dir
    (`.githooks` by default) and points `core.hooksPath` at it, and copies
-   the CI workflow. Safe to re-run (everything reports `[SKIP]`).
+   the CI workflow and `.second-brain.conf`. Safe to re-run (everything
+   reports `[SKIP]`).
 3. **Onboard** (once per destination) — run the `second-brain:onboard`
    skill: replaces every `> Placeholder` marker under `docs/` with real
    content verified against that destination's code.
@@ -111,10 +121,14 @@ plugin/repo boundary (see ADR 0002).
    non-cloned pre-commit hook misses.
 5. **Refresh system files** — after a plugin update ships new hook/CI/block
    content, `/second-brain:refresh` (`--refresh-system`) overwrites only
-   those three committed files; `docs/` and user prose stay untouched.
+   those three committed files; `docs/`, `.second-brain.conf` and user prose
+   stay untouched.
 
 ## Relevant architectural decisions
 
+- [ADR 0007](./adr/0007-externalized-path-filters-and-opt-in-allowlist.md) —
+  path filters moved into a create-only `.second-brain.conf`, with an
+  opt-in (and knowingly fail-open) `SB_INCLUDE_PATTERN` allowlist.
 - [ADR 0006](./adr/0006-configurable-committed-hooks-dir.md) — the git
   pre-commit lives in a committed, configurable hooks dir (default
   `.githooks`), and an existing hook is extended by injecting a marker
@@ -132,4 +146,4 @@ plugin/repo boundary (see ADR 0002).
 - [ADR 0001](./adr/0001-manifest-gated-sync-for-system-owned-files.md) —
   the previous SHA-256-manifest install strategy, **superseded by 0003**.
 
-*Last updated: 2026-07-28 — verified against commit `00727a6`.*
+*Last updated: 2026-07-31 — verified against commit `81606ed`.*

@@ -11,13 +11,36 @@
 # stop_hook_active (present on stdin when this hook already blocked the
 # current stop) guards against looping forever.
 #
-# Keep EXCLUDE_PATTERN byte-identical with bootstrap/payload/git-pre-commit
-# and bootstrap/payload/workflows/second-brain.yml (ADR 0002). No external
+# Project-specific filters are NOT edited here (this file is served read-only
+# from the plugin cache): they live in the destination's committed
+# .second-brain.conf -- SB_INCLUDE_PATTERN (allowlist, source side only),
+# SB_EXCLUDE_EXTRA (added to the default denylist), SB_EXCLUDE_PATTERN
+# (replaces it). Keep the defaults and the reader byte-identical with
+# bootstrap/payload/git-pre-commit and
+# bootstrap/payload/workflows/second-brain.yml (ADR 0002). No external
 # dependencies: bash + git only (no uv, no python, no jq).
 set -uo pipefail
 
-EXCLUDE_PATTERN='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$)|(^|/)tests?/'
+DEFAULT_EXCLUDE_PATTERN='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$|\.second-brain\.conf$)|(^|/)tests?/'
 DOCS_PATTERN='^docs/|^CLAUDE\.md$'
+
+# Read KEY from the .second-brain.conf-style file $1. Last assignment wins;
+# surrounding single/double quotes and trailing blanks are stripped; a missing
+# file or key yields the empty string (caller falls back to the default).
+sb_conf_get() {
+    [ -f "$1" ] || return 0
+    sed -n "s/^[[:space:]]*$2[[:space:]]*=[[:space:]]*//p" "$1" |
+        sed -e 's/[[:space:]]*$//' -e 's/^\(['"'"'"]\)\(.*\)\1$/\2/' |
+        tail -n 1
+}
+
+root="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}"
+conf="$root/.second-brain.conf"
+INCLUDE_PATTERN="$(sb_conf_get "$conf" SB_INCLUDE_PATTERN)"
+EXCLUDE_PATTERN="$(sb_conf_get "$conf" SB_EXCLUDE_PATTERN)"
+EXCLUDE_EXTRA="$(sb_conf_get "$conf" SB_EXCLUDE_EXTRA)"
+[ -n "$EXCLUDE_PATTERN" ] || EXCLUDE_PATTERN="$DEFAULT_EXCLUDE_PATTERN"
+[ -n "$EXCLUDE_EXTRA" ] && EXCLUDE_PATTERN="($EXCLUDE_PATTERN)|($EXCLUDE_EXTRA)"
 
 # Loop guard: if we already blocked this stop, do nothing.
 payload="$(cat)"
@@ -54,6 +77,10 @@ relevant="$(printf '%s\n' "$changed" | grep -vE "$EXCLUDE_PATTERN" || true)"
 
 source_changed="$(printf '%s\n' "$relevant" | grep -vE "$DOCS_PATTERN" || true)"
 docs_changed="$(printf '%s\n' "$relevant" | grep -E "$DOCS_PATTERN" || true)"
+
+if [ -n "$INCLUDE_PATTERN" ] && [ -n "$source_changed" ]; then
+    source_changed="$(printf '%s\n' "$source_changed" | grep -E "$INCLUDE_PATTERN" || true)"
+fi
 
 if [ -n "$source_changed" ] && [ -z "$docs_changed" ]; then
     printf '%s\n' '{"decision":"block","reason":"[SECOND BRAIN SYSTEM] Uncommitted source changes with no matching docs/ update. Run the second-brain:update skill, then stop again."}'

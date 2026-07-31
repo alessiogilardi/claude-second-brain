@@ -133,14 +133,28 @@ The pre-commit hook (installed in the committed hooks dir,
 `.githooks/pre-commit` by default) and its two mirrors — the Stop hook (the
 second-brain plugin's `session-reminder.sh`) and the CI backstop
 (`.github/workflows/second-brain.yml`) — all decide whether "source
-changed" using the same `EXCLUDE_PATTERN`: it skips lockfiles (`*.lock`,
+changed" the same way: they skip lockfiles (`*.lock`,
 `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`,
 `uv.lock`, `Cargo.lock`, `Gemfile.lock`), `.github/`, `.claude/`,
-`.githooks/`, `.gitattributes`, and `tests?/` at any depth. If a project needs a different
-set (more generated/vendored paths, a narrower test match, or a non-default
-`--hooks-dir`), edit `EXCLUDE_PATTERN` in all three files together — they
-must stay mirrored (the pre-commit's copy lives inside its marker block, the
-canonical source for both a fresh and an injected hook).
+`.githooks/`, `.gitattributes`, `.second-brain.conf`, and `tests?/` at any
+depth.
+
+If a project needs a different set, change it in **`.second-brain.conf`** at
+the repo root — never by editing the three files, whose patterns are
+rewritten by every `/second-brain:refresh`. All three read that one file:
+
+- `SB_EXCLUDE_EXTRA` — added to the default denylist. This is the right
+  answer to a recurring false positive (generated/vendored paths, a
+  non-default `--hooks-dir`).
+- `SB_INCLUDE_PATTERN` — allowlist; only matching paths count as source.
+  Powerful but **fail-open**: anything not listed is never checked, so docs
+  can drift silently. Propose it only when the user's source lives in a
+  fixed set of directories, and say what the trade-off is.
+- `SB_EXCLUDE_PATTERN` — replaces the built-in denylist wholesale.
+
+A repo bootstrapped before v0.4 has no `.second-brain.conf` yet; running
+`/second-brain:bootstrap` or `/second-brain:refresh` creates it without
+touching anything else.
 
 Two legitimate reasons to bypass with `git commit --no-verify`:
 

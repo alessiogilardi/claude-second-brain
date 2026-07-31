@@ -13,6 +13,7 @@ repo/
 │       ├── docs/                       # placeholder doc set + adr/template.md
 │       ├── git-pre-commit              # the git pre-commit hook source
 │       ├── workflows/second-brain.yml  # the CI backstop source
+│       ├── second-brain.conf           # path-filter config (create-only in the destination)
 │       └── claude-md-block.md          # the marker-delimited CLAUDE.md block
 ├── hooks/                          # plugin Claude Code hooks (NOT git hooks)
 │   ├── hooks.json                      # wires Stop -> session-reminder.sh, SessionStart -> bootstrap-reminder.sh
@@ -34,6 +35,7 @@ repo/
 │   ├── second-brain.yml                # this repo's bootstrapped CI (dogfood)
 │   └── plugin-version.yml              # repo-specific: enforces plugin.json version bump
 ├── .gitattributes                  # forces LF on shebang'd payload/hook scripts
+├── .second-brain.conf              # this repo's own path filters (dogfood; defaults, all keys commented out)
 ├── CLAUDE.md
 └── README.md
 ```
@@ -49,7 +51,7 @@ repo/
   the bootstrap reads its sources from `${CLAUDE_PLUGIN_ROOT}/bootstrap/…`
   at run time. `payload/` is the single source of truth for every file
   that must be *committed into a destination repo* (docs scaffold, git
-  pre-commit, CI workflow, CLAUDE.md block).
+  pre-commit, CI workflow, CLAUDE.md block, `.second-brain.conf`).
 - The **git `pre-commit` hook and the CI workflow** live in
   `bootstrap/payload/` because they must be materialised into the
   destination working tree — the pre-commit into the committed, configurable
@@ -73,4 +75,4 @@ repo/
   repo's own `plugin.json` version-bump discipline and is never
   distributed to a destination project (see ADR 0005).
 
-*Last updated: 2026-07-28 — verified against commit `00727a6`.*
+*Last updated: 2026-07-31 — verified against commit `81606ed`.*
