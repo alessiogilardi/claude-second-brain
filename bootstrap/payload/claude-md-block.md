@@ -5,6 +5,14 @@
 
 @docs/README.md
 
+### Before Non-Trivial Work (MANDATORY)
+Before any analysis, code review, planning, or implementation, delegate to
+the `second-brain-reader` subagent to check `docs/` for existing patterns,
+prior decisions, domain terms, and testing conventions. Do not read the
+`docs/*.md` files yourself to answer these questions — that defeats the
+subagent's purpose. Skipping this step means acting on stale assumptions
+about architecture that's already been decided.
+
 ### Triggers (IMMEDIATE ACTION REQUIRED)
 Run `skill: "second-brain:update"` after:
 * Schema changes or structural refactors.

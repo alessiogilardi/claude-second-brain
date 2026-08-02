@@ -81,7 +81,11 @@ lives in the plugin; everything that must be committed is bootstrapped.
   afterward.
 - **`agents/second-brain-reader.md`** — a read-only subagent that answers
   questions from `docs/` with verbatim quotes, to save the caller's
-  context.
+  context. Its use is mandatory, not optional: the injected `CLAUDE.md`
+  block (`bootstrap/payload/claude-md-block.md`) carries a "Before
+  Non-Trivial Work" instruction directing the model to delegate to it
+  before analysis, review, or planning, instead of reading `docs/*.md`
+  directly.
 - **`.github/workflows/plugin-version.yml`** — this repo's own release
   hygiene, unrelated to the Second Brain system it distributes (a
   destination project never sees it, and it's not part of
@@ -146,4 +150,4 @@ values do not, since all three read the destination's single
 - [ADR 0001](./adr/0001-manifest-gated-sync-for-system-owned-files.md) —
   the previous SHA-256-manifest install strategy, **superseded by 0003**.
 
-*Last updated: 2026-07-31 — verified against commit `81606ed`.*
+*Last updated: 2026-08-02 — verified against commit `5a968c5`.*
