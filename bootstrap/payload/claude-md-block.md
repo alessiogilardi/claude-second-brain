@@ -7,7 +7,7 @@
 
 ### Before Non-Trivial Work (MANDATORY)
 Before any analysis, code review, planning, or implementation, delegate to
-the `second-brain-reader` subagent to check `docs/` for existing patterns,
+the `second-brain:second-brain-reader` subagent to check `docs/` for existing patterns,
 prior decisions, domain terms, and testing conventions. Do not read the
 `docs/*.md` files yourself to answer these questions — that defeats the
 subagent's purpose. Skipping this step means acting on stale assumptions

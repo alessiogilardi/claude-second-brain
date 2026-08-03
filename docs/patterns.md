@@ -32,8 +32,17 @@
   `second-brain-bootstrap` would read as `second-brain:second-brain-bootstrap`.
 - Agent files: kebab-case filename matching the agent's `name:` frontmatter
   field (`second-brain-reader.md`); no wrapping directory — Claude Code
-  discovers agents as flat files under `agents/`.
+  discovers agents as flat files under `agents/`. Same namespacing trap as
+  above applies to invocation, not just the filename: Claude Code exposes
+  a plugin agent's `subagent_type` as `second-brain:<name>`
+  (`second-brain:second-brain-reader`), never the bare `name:` value —
+  confirmed empirically (a bare `second-brain-reader` subagent_type errors
+  with "Agent type not found"). Any prose instructing a model to delegate
+  to this agent (`CLAUDE.md`, `bootstrap/payload/claude-md-block.md`) must
+  spell out the namespaced form, or the delegation silently falls through
+  to the calling model's own session model instead of the agent's
+  `model: haiku`.
 - ADR files: `NNNN-*.md`, zero-padded to 4 digits (see the
   `second-brain:update` skill's "ADR numbering").
 
-*Last updated: 2026-07-31 — verified against commit `81606ed`.*
+*Last updated: 2026-08-03 — verified against commit `cd8293d`.*
