@@ -83,7 +83,7 @@ if [ -n "$INCLUDE_PATTERN" ] && [ -n "$source_changed" ]; then
 fi
 
 if [ -n "$source_changed" ] && [ -z "$docs_changed" ]; then
-    printf '%s\n' '{"decision":"block","reason":"[SECOND BRAIN SYSTEM] Uncommitted source changes with no matching docs/ update. Run the second-brain:update skill, then stop again."}'
+    printf '%s\n' '{"decision":"block","reason":"[SECOND BRAIN SYSTEM] Uncommitted source changes with no matching docs/ update. Run the second-brain:update skill, then stop again -- do not hand-edit docs/ just to pass this check."}'
 fi
 
 exit 0
