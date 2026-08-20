@@ -1,7 +1,7 @@
 # claude-second-brain-skill
 
 A Claude Code **plugin** that exports the **"Second Brain"** documentation
-system to other projects: a `docs/` structure kept in sync with the code
+system to other projects: a `docs/second-brain/` structure kept in sync with the code
 via two skills, a git `pre-commit` hook, and a CI backstop. The plugin
 carries the runtime; a deterministic git-bash **bootstrap** scaffolds the
 files that must be committed into the consuming repo.
@@ -16,7 +16,7 @@ claude-second-brain-skill/
 ├── bootstrap/
 │   ├── bootstrap.sh                # deterministic, create-only repo-side scaffolder
 │   └── payload/                    # files the bootstrap copies into a destination
-│       ├── docs/                       # placeholder doc set + adr/template.md
+│       ├── docs/                       # placeholder doc set -> docs/second-brain/ in the destination
 │       ├── git-pre-commit              # the git pre-commit hook source
 │       ├── workflows/second-brain.yml  # the CI backstop source
 │       ├── second-brain.conf           # path-filter config (create-only in the destination)
@@ -29,10 +29,10 @@ claude-second-brain-skill/
 │   ├── bootstrap.md                 # /second-brain:bootstrap -> bootstrap.sh
 │   └── refresh.md                   # /second-brain:refresh   -> bootstrap.sh --refresh-system
 ├── skills/
-│   ├── update/SKILL.md              # second-brain:update  -- keeps docs/ in sync with the code
-│   └── onboard/SKILL.md             # second-brain:onboard -- bootstraps docs/ from placeholders (once)
+│   ├── update/SKILL.md              # second-brain:update  -- keeps docs/second-brain/ in sync with the code
+│   └── onboard/SKILL.md             # second-brain:onboard -- bootstraps docs/second-brain/ from placeholders (once)
 ├── agents/
-│   └── second-brain-reader.md      # read-only docs/ retrieval subagent
+│   └── second-brain-reader.md      # read-only docs/second-brain/ retrieval subagent
 └── README.md
 ```
 
@@ -52,7 +52,7 @@ read-only and external to your repo. There is no plugin post-install
 hook in Claude Code, so the `SessionStart` reminder is the closest
 substitute: on your next fresh session in a repo that hasn't been
 bootstrapped, it nudges the model to run `/second-brain:bootstrap` (see
-[ADR 0004](./docs/adr/0004-sessionstart-bootstrap-nudge.md)).
+[ADR 0004](./docs/second-brain/adr/0004-sessionstart-bootstrap-nudge.md)).
 
 **2. Bootstrap the repo-side files.** From inside the target project, run:
 
@@ -63,8 +63,11 @@ bootstrapped, it nudges the model to run `/second-brain:bootstrap` (see
 It runs `bootstrap/bootstrap.sh` (you can also call
 `bash bootstrap/bootstrap.sh [TargetPath] [--hooks-dir DIR]` directly):
 
-1. scaffolds the `docs/` set (placeholders + `adr/template.md`) — create-only,
-   never overwriting an existing file;
+1. scaffolds the `docs/second-brain/` set (placeholders + `adr/template.md`) — create-only,
+   never overwriting an existing file. The set lives in its own subdirectory
+   so it never collides with documentation you already keep under `docs/`;
+   anything else in there stays yours and is invisible to the check (see
+   *Tuning what counts as a "source change"* below);
 2. appends the marker-delimited block (`<!-- BEGIN/END SECOND BRAIN
    SYSTEM -->`) to `CLAUDE.md` if it isn't already present, leaving your
    own content untouched;
@@ -87,10 +90,26 @@ It runs `bootstrap/bootstrap.sh` (you can also call
    "source change"* below).
 
 It never deletes and never overwrites your own content, so an accidental
-re-run is a no-op (see [ADR 0006](./docs/adr/0006-configurable-committed-hooks-dir.md)).
+re-run is a no-op (see [ADR 0006](./docs/second-brain/adr/0006-configurable-committed-hooks-dir.md)).
+
+**Migrating from a pre-1.0 install.** Before 1.0 the doc set was scaffolded
+directly into `docs/`. The bootstrap detects that layout, skips the docs
+scaffold and prints the move to make; it never moves your files itself.
+Run it, then `/second-brain:refresh`:
+
+```sh
+mkdir -p docs/second-brain
+git mv docs/README.md docs/architecture.md docs/database.md \
+       docs/glossary.md docs/layout.md docs/patterns.md \
+       docs/testing.md docs/adr docs/second-brain/
+```
+
+Until the move is done, a refreshed hook rejects every commit: it no longer
+recognises `docs/*.md` as documentation (see
+[ADR 0008](./docs/second-brain/adr/0008-second-brain-docs-in-a-docs-subdirectory.md)).
 
 **3. Onboard (once).** Run the `second-brain:onboard` skill before your
-first commit, to replace every `docs/*.md` placeholder with real content.
+first commit, to replace every `docs/second-brain/*.md` placeholder with real content.
 Otherwise the one-time bootstrap gets triggered mid-commit the first time
 the pre-commit hook rejects a source change with no matching docs update —
 correct, but the worst moment to pay that cost on a large repo.
@@ -100,7 +119,7 @@ refreshes the skills/agent/Stop hook automatically. To refresh the
 *committed* system content (the git pre-commit block between its markers,
 the CI workflow, and the `CLAUDE.md` block between its markers) run
 `/second-brain:refresh` — it rewrites only our own slices and never touches
-`docs/`, your own prose, or any host hook logic wrapped around our block.
+`docs/second-brain/`, your own prose, or any host hook logic wrapped around our block.
 
 ## Enforcement is per-clone, not per-repo
 
@@ -140,7 +159,7 @@ shipped to consumers) fails a PR that touches `hooks/`, `skills/`,
 `agents/`, `commands/`, or `bootstrap/` without also bumping `version`, and rejects a
 malformed or non-increasing version. It cannot judge which tier
 (major/minor/patch) is correct for a given change — that stays a human
-call; see [ADR 0005](./docs/adr/0005-semver-and-ci-enforced-version-bump.md).
+call; see [ADR 0005](./docs/second-brain/adr/0005-semver-and-ci-enforced-version-bump.md).
 
 ## Requirements
 
@@ -152,7 +171,7 @@ call; see [ADR 0005](./docs/adr/0005-semver-and-ci-enforced-version-bump.md).
 ## Tuning what counts as a "source change"
 
 The committed pre-commit (`.githooks/pre-commit` by default) is a syntactic
-check, not a semantic one: it only verifies that *some* file under `docs/`
+check, not a semantic one: it only verifies that *some* file under `docs/second-brain/`
 or `CLAUDE.md` was staged alongside source changes.
 
 Which paths count is configured in **`.second-brain.conf`** at the repo
@@ -166,8 +185,18 @@ keeps the built-in defaults (and future improvements to them).
 | Key | Effect |
 |---|---|
 | `SB_EXCLUDE_EXTRA` | Added to the default denylist. **The usual fix for a false positive** — e.g. `'^(vendor/\|migrations/)'`. |
-| `SB_INCLUDE_PATTERN` | Allowlist: only matching paths count as source (empty = all). Applied to the source side only, so `docs/`+`CLAUDE.md` stay recognized as documentation whatever it says. |
-| `SB_EXCLUDE_PATTERN` | Replaces the built-in denylist entirely (tests, CI, common lockfiles, `.claude/`, `.githooks/`, `.gitattributes`, `.second-brain.conf`). Use `'^$'` to disable exclusions. |
+| `SB_INCLUDE_PATTERN` | Allowlist: only matching paths count as source (empty = all). Applied to the source side only, so `docs/second-brain/`+`CLAUDE.md` stay recognized as documentation whatever it says. |
+| `SB_EXCLUDE_PATTERN` | Replaces the built-in denylist entirely (tests, CI, common lockfiles, `docs/`, `.claude/`, `.githooks/`, `.gitattributes`, `.second-brain.conf`). Use `'^$'` to disable exclusions. |
+
+All three are applied to the **source side only**. The "documentation
+changed" set is computed first, from the raw file list, and is always
+exactly `docs/second-brain/` plus `CLAUDE.md` — no filter here can widen it
+or take a file out of it. That is what lets `docs/` sit in the default
+denylist without swallowing `docs/second-brain/` with it: your own
+documentation is neither documentation nor source for this check, so
+editing `docs/api.md` neither trips the check nor satisfies it. Drop the
+`docs/` entry via `SB_EXCLUDE_PATTERN` if you want every doc change to
+demand a Second Brain update too.
 
 ⚠️ **The allowlist is fail-open.** A denylist errs toward false positives —
 noisy but visible. `SB_INCLUDE_PATTERN` errs the other way: a directory you
@@ -175,7 +204,7 @@ add to the project and forget to add there is never checked, and your docs
 drift with nothing to tell you. Reach for `SB_EXCLUDE_EXTRA` first, and use
 the allowlist only when the project's source really lives in a fixed set of
 directories. See
-[ADR 0007](./docs/adr/0007-externalized-path-filters-and-opt-in-allowlist.md).
+[ADR 0007](./docs/second-brain/adr/0007-externalized-path-filters-and-opt-in-allowlist.md).
 
 Note that a PR can widen these filters as easily as it can edit the
 workflow itself — review `.second-brain.conf` changes like any other
@@ -183,7 +212,7 @@ enforcement change.
 
 Bypassing with `git commit --no-verify` is legitimate for a WIP commit on
 a private branch you'll squash later, or a doc-only follow-up commit — don't
-touch `docs/` just to satisfy the hook ("doc-touch"); see the
+touch `docs/second-brain/` just to satisfy the hook ("doc-touch"); see the
 `second-brain:update` skill for the full policy.
 
 On a non-Windows clone the hook scripts may lack the POSIX executable bit;

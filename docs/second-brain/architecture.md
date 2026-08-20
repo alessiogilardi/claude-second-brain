@@ -13,7 +13,7 @@ projects consume. There is no runtime service here; distribution is
    end-of-session Stop hook, and a session-start bootstrap nudge;
 2. a deterministic **git-bash bootstrap** (`bootstrap/bootstrap.sh`,
    shipped inside the plugin) that scaffolds the files which *must* be
-   committed into the consuming repo's working tree — the `docs/` set, the
+   committed into the consuming repo's working tree — the `docs/second-brain/` set, the
    `CLAUDE.md` block, the git `pre-commit` hook, and the CI workflow.
 
 The split is forced by a hard constraint: a plugin cannot write into the
@@ -28,8 +28,13 @@ lives in the plugin; everything that must be committed is bootstrapped.
   and a marketplace catalog whose single plugin `source` is `.` (the repo
   root), so this repo is simultaneously the plugin and its marketplace.
 - **`bootstrap/bootstrap.sh`** (bash) — the deterministic scaffolder.
-  Create-only for `docs/`, the CI workflow and `.second-brain.conf`;
-  appends the `CLAUDE.md` marker block if absent. Installs the git pre-commit into a committed,
+  Create-only for `docs/second-brain/`, the CI workflow and `.second-brain.conf`;
+  appends the `CLAUDE.md` marker block if absent. The doc-set destination
+  is the `DOCS_DIR` literal; a destination still on the pre-1.0 layout (our
+  navigation map at `docs/README.md`, nothing at
+  `docs/second-brain/README.md`) gets the docs scaffold skipped and the
+  `git mv` printed instead, so placeholders are never seeded next to a
+  populated legacy set — the move itself stays the user's (ADR 0008). Installs the git pre-commit into a committed,
   configurable hooks dir (`--hooks-dir`, default `.githooks`) and points
   `core.hooksPath` at it (only when unset-and-ours or already ours — never
   clobbers husky/other), and pins that hook to LF in the destination's
@@ -47,13 +52,15 @@ lives in the plugin; everything that must be committed is bootstrapped.
   content, scoped to the pre-commit block, the CI workflow, and the
   `CLAUDE.md` block *between its markers* (see ADR 0006).
 - **`bootstrap/payload/`** — the source content the bootstrap copies:
-  `docs/` (placeholder set + `adr/template.md`), `git-pre-commit`,
+  `docs/` (the placeholder set, copied to `docs/second-brain/` in the
+  destination) + `adr/template.md`, `git-pre-commit`,
   `workflows/second-brain.yml`, `claude-md-block.md`, and
   `second-brain.conf`.
 - **`.second-brain.conf`** (in the destination) — the single place a
   project tunes which paths count as source: `SB_INCLUDE_PATTERN`
-  (allowlist, applied to the source side only), `SB_EXCLUDE_EXTRA` (added
-  to the default denylist), `SB_EXCLUDE_PATTERN` (replaces it). Read — by
+  (allowlist), `SB_EXCLUDE_EXTRA` (added
+  to the default denylist), `SB_EXCLUDE_PATTERN` (replaces it) — all three
+  applied to the source side only. Read — by
   parsing, never by sourcing — by all three enforcement points, and
   create-only so `--refresh-system` never reverts it (see ADR 0007).
 - **`hooks/hooks.json` + `hooks/session-reminder.sh`** — the plugin's Stop
@@ -76,15 +83,15 @@ lives in the plugin; everything that must be committed is bootstrapped.
   executes the script deterministically; the model only reports its
   output.
 - **`skills/{update,onboard}/SKILL.md`** — the two skills that read/write
-  `docs/`: `second-brain:onboard` bootstraps a fresh destination's
-  placeholders once; `second-brain:update` keeps `docs/` in sync
+  `docs/second-brain/`: `second-brain:onboard` bootstraps a fresh destination's
+  placeholders once; `second-brain:update` keeps `docs/second-brain/` in sync
   afterward.
 - **`agents/second-brain-reader.md`** — a read-only subagent that answers
-  questions from `docs/` with verbatim quotes, to save the caller's
+  questions from `docs/second-brain/` with verbatim quotes, to save the caller's
   context. Its use is mandatory, not optional: the injected `CLAUDE.md`
   block (`bootstrap/payload/claude-md-block.md`) carries a "Before
   Non-Trivial Work" instruction directing the model to delegate to it
-  before analysis, review, or planning, instead of reading `docs/*.md`
+  before analysis, review, or planning, instead of reading `docs/second-brain/*.md`
   directly.
 - **`.github/workflows/plugin-version.yml`** — this repo's own release
   hygiene, unrelated to the Second Brain system it distributes (a
@@ -110,26 +117,29 @@ values do not, since all three read the destination's single
    the next fresh session in any repo lacking the `CLAUDE.md` marker, the
    SessionStart hook reminds the model to bootstrap.
 2. **Bootstrap the repo** — run `/second-brain:bootstrap` (which runs
-   `bootstrap.sh`). Scaffolds `docs/` (create-only), appends the `CLAUDE.md`
+   `bootstrap.sh`). Scaffolds `docs/second-brain/` (create-only), appends the `CLAUDE.md`
    block, installs the git `pre-commit` into the committed hooks dir
    (`.githooks` by default) and points `core.hooksPath` at it, and copies
    the CI workflow and `.second-brain.conf`. Safe to re-run (everything
    reports `[SKIP]`).
 3. **Onboard** (once per destination) — run the `second-brain:onboard`
-   skill: replaces every `> Placeholder` marker under `docs/` with real
+   skill: replaces every `> Placeholder` marker under `docs/second-brain/` with real
    content verified against that destination's code.
 4. **Ongoing enforcement** — a source-changing commit without a matching
-   `docs/`/`CLAUDE.md` change is rejected by `pre-commit` → the
+   `docs/second-brain/`/`CLAUDE.md` change is rejected by `pre-commit` → the
    `second-brain:update` skill runs, docs are staged with the code, commit
    retried. The Stop hook and the CI workflow catch what the local,
    non-cloned pre-commit hook misses.
 5. **Refresh system files** — after a plugin update ships new hook/CI/block
    content, `/second-brain:refresh` (`--refresh-system`) overwrites only
-   those three committed files; `docs/`, `.second-brain.conf` and user prose
+   those three committed files; `docs/second-brain/`, `.second-brain.conf` and user prose
    stay untouched.
 
 ## Relevant architectural decisions
 
+- [ADR 0008](./adr/0008-second-brain-docs-in-a-docs-subdirectory.md) — the
+  doc set moved to a fixed `docs/second-brain/`, and the denylist became
+  source-side only so `docs/` can be excluded without swallowing it.
 - [ADR 0007](./adr/0007-externalized-path-filters-and-opt-in-allowlist.md) —
   path filters moved into a create-only `.second-brain.conf`, with an
   opt-in (and knowingly fail-open) `SB_INCLUDE_PATTERN` allowlist.
@@ -150,4 +160,4 @@ values do not, since all three read the destination's single
 - [ADR 0001](./adr/0001-manifest-gated-sync-for-system-owned-files.md) —
   the previous SHA-256-manifest install strategy, **superseded by 0003**.
 
-*Last updated: 2026-08-02 — verified against commit `5a968c5`.*
+*Last updated: 2026-08-20 — verified against commit `98b5062`.*

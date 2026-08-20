@@ -17,7 +17,7 @@ BEGIN='<!-- BEGIN SECOND BRAIN SYSTEM'
 git rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
 if [ ! -f CLAUDE.md ] || ! grep -qF "$BEGIN" CLAUDE.md; then
-    echo "[SECOND BRAIN SYSTEM] This repo has not been bootstrapped yet. Run /second-brain:bootstrap to scaffold docs/, the CLAUDE.md block, the git pre-commit hook, and the CI workflow."
+    echo "[SECOND BRAIN SYSTEM] This repo has not been bootstrapped yet. Run /second-brain:bootstrap to scaffold docs/second-brain/, the CLAUDE.md block, the git pre-commit hook, and the CI workflow."
 fi
 
 exit 0

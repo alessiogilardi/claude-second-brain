@@ -5,9 +5,13 @@
 # local git config, so it isn't cloned and can be skipped entirely (missing
 # bootstrap, or plain --no-verify). This workflow re-applies the same
 # syntactic check to the PR diff so a missing/bypassed local hook doesn't
-# mean zero enforcement. Keep the default patterns and the .second-brain.conf
-# reader mirrored with the bootstrapped git pre-commit and the second-brain
-# plugin's session-reminder.sh.
+# mean zero enforcement. Keep the default patterns, the evaluation order and
+# the .second-brain.conf reader mirrored with the bootstrapped git pre-commit
+# and the second-brain plugin's session-reminder.sh.
+#
+# The Second Brain lives under docs/second-brain/ so it never collides with
+# the project's own documentation; everything else under docs/ is neither
+# documentation nor source here.
 #
 # Project-specific filters belong in the committed .second-brain.conf, not in
 # this file (it is overwritten by every /second-brain:refresh). The conf is
@@ -28,12 +32,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify docs/ or CLAUDE.md changed alongside source
+      - name: Verify docs/second-brain/ or CLAUDE.md changed alongside source
         shell: bash
         run: |
           set -e
-          DEFAULT_EXCLUDE_PATTERN='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$|\.second-brain\.conf$)|(^|/)tests?/'
-          DOCS_PATTERN='^docs/|^CLAUDE\.md$'
+          DEFAULT_EXCLUDE_PATTERN='^(\.github/|docs/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$|\.second-brain\.conf$)|(^|/)tests?/'
+          DOCS_PATTERN='^docs/second-brain/|^CLAUDE\.md$'
 
           # Read KEY from the .second-brain.conf-style file $1. Last assignment
           # wins; surrounding quotes and trailing blanks are stripped; a missing
@@ -63,15 +67,22 @@ jobs:
             exit 0
           fi
 
-          relevant_files=$(printf '%s\n' "$changed_files" | grep -vE "$EXCLUDE_PATTERN" || true)
-          docs_changed=$(printf '%s\n' "$relevant_files" | grep -E "$DOCS_PATTERN" || true)
-          source_changed=$(printf '%s\n' "$relevant_files" | grep -vE "$DOCS_PATTERN" || true)
+          # Evaluation order: the docs/source split runs on the RAW file list,
+          # and the denylist is applied to the source side only -- the same
+          # asymmetry INCLUDE_PATTERN already has. A filter that answers "is
+          # this a source change?" must not be able to remove a file from the
+          # "documentation changed" set; that is what lets the broad `docs/`
+          # entry in the denylist coexist with docs/second-brain/ (ADR 0008,
+          # amending ADR 0007).
+          docs_changed=$(printf '%s\n' "$changed_files" | grep -E "$DOCS_PATTERN" || true)
+          source_changed=$(printf '%s\n' "$changed_files" | grep -vE "$DOCS_PATTERN" || true)
+          source_changed=$(printf '%s\n' "$source_changed" | grep -vE "$EXCLUDE_PATTERN" || true)
 
           if [ -n "$INCLUDE_PATTERN" ] && [ -n "$source_changed" ]; then
             source_changed=$(printf '%s\n' "$source_changed" | grep -E "$INCLUDE_PATTERN" || true)
           fi
 
           if [ -n "$source_changed" ] && [ -z "$docs_changed" ]; then
-            echo "::error::[SECOND BRAIN SYSTEM] This PR changes source code but no file under docs/ or CLAUDE.md. Run the second-brain:update skill and push a docs update -- do not hand-edit docs/ just to pass this check -- or note in the PR description why this change doesn't need one."
+            echo "::error::[SECOND BRAIN SYSTEM] This PR changes source code but no file under docs/second-brain/ or CLAUDE.md. Run the second-brain:update skill and push a docs update -- do not hand-edit docs/second-brain/ just to pass this check -- or note in the PR description why this change doesn't need one."
             exit 1
           fi

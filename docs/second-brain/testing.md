@@ -9,7 +9,8 @@ hook. Verification is manual but scriptable, and splits in two.
 **Deterministic core (scriptable against a scratch git repo).** Run
 `bootstrap.sh` against a throwaway `git init` repo and assert:
 
-- **create** — `docs/` scaffold, exactly one `CLAUDE.md` marker block,
+- **create** — `docs/second-brain/` scaffold (and nothing at `docs/*.md`),
+  exactly one `CLAUDE.md` marker block carrying `@docs/second-brain/README.md`,
   `.githooks/pre-commit` (carrying the `# >>> BEGIN/END SECOND BRAIN SYSTEM
   pre-commit <<<` markers), `.github/workflows/second-brain.yml`, and
   `core.hooksPath=.githooks`;
@@ -21,8 +22,9 @@ hook. Verification is manual but scriptable, and splits in two.
   (all keys commented out) behaviour is identical to the built-in defaults,
   and so is a run with the file deleted entirely; `SB_INCLUDE_PATTERN='^src/'`
   makes a commit touching only `app/` pass while `src/` still rejects, and
-  `src/` + `docs/` must still pass (the allowlist must not filter the docs
-  side); `SB_EXCLUDE_EXTRA='^vendor/'` lets a `vendor/`-only commit through
+  `src/` + `docs/second-brain/` must still pass (no filter may reach the
+  docs side — ADR 0008);
+  `SB_EXCLUDE_EXTRA='^vendor/'` lets a `vendor/`-only commit through
   while `src/` still rejects; values parse bare, single- or double-quoted and
   with trailing blanks; staging only `.second-brain.conf` passes (it is in
   the default denylist); the same assertions hold for the Stop hook and for
@@ -60,6 +62,16 @@ hook. Verification is manual but scriptable, and splits in two.
   no-op (`[SKIP]`). A foreign *relative* `pre-commit` pin (e.g.
   `tools/hooks/pre-commit`) must survive; with a legacy `.claude/hooks`
   install the rewritten entry must point there, not at `.githooks`;
+- **doc-set location** (ADR 0008) — a file elsewhere under `docs/` (e.g.
+  `docs/api.md`) is neutral: staged alone the commit passes, staged with a
+  source change it is rejected, and it never satisfies the check. The same
+  three cases must hold for the Stop hook;
+- **legacy layout** — in a repo carrying the pre-1.0 set (our navigation
+  map at `docs/README.md`), the docs scaffold is skipped, the `git mv` is
+  printed, no `docs/second-brain/` is seeded, and the rest of the bootstrap
+  still runs. A bare `mkdir docs/second-brain` must not switch the
+  detection off; after a real move the warning stops, missing placeholders
+  are filled in, and migrated files are not overwritten;
 - **Stop hook** — `session-reminder.sh` blocks on source-without-docs,
   the `stop_hook_active` loop-guard suppresses a re-block, and a clean or
   docs-including tree does not block;
@@ -70,10 +82,11 @@ hook. Verification is manual but scriptable, and splits in two.
 - **refresh** — `--refresh-system` rewrites only our slice: the pre-commit
   block between its markers (preserving any host hook logic around it), the
   CI workflow, and the CLAUDE.md block between markers, preserving user
-  prose around it and leaving `docs/` byte-identical.
+  prose around it and leaving `docs/second-brain/` byte-identical.
 
 Also check the ADR-0002 invariant: the default exclude pattern, the docs
-pattern, and the `.second-brain.conf` reader are byte-identical across
+pattern, the evaluation order, and the `.second-brain.conf` reader are
+byte-identical across
 `bootstrap/payload/git-pre-commit`, `hooks/session-reminder.sh`, and
 `bootstrap/payload/workflows/second-brain.yml` (modulo the `_sb_` prefixes
 the pre-commit block uses to stay collision-free inside a host hook).
@@ -95,4 +108,4 @@ a real PR.
 If a framework is introduced later, the deterministic core above is the
 natural first suite (e.g. a committed `verify.sh` or a bats test file).
 
-*Last updated: 2026-07-31 — verified against commit `81606ed`.*
+*Last updated: 2026-08-20 — verified against commit `98b5062`.*

@@ -10,7 +10,7 @@ repo/
 ├── bootstrap/
 │   ├── bootstrap.sh                # deterministic, create-only repo-side scaffolder
 │   └── payload/                    # content the bootstrap copies into a destination
-│       ├── docs/                       # placeholder doc set + adr/template.md
+│       ├── docs/                       # placeholder doc set -> docs/second-brain/ in the destination
 │       ├── git-pre-commit              # the git pre-commit hook source
 │       ├── workflows/second-brain.yml  # the CI backstop source
 │       ├── second-brain.conf           # path-filter config (create-only in the destination)
@@ -26,8 +26,8 @@ repo/
 │   ├── update/SKILL.md                 # second-brain:update
 │   └── onboard/SKILL.md                # second-brain:onboard
 ├── agents/
-│   └── second-brain-reader.md          # read-only docs/ retrieval subagent
-├── docs/                           # this repo's own Second Brain (dogfood)
+│   └── second-brain-reader.md          # read-only docs/second-brain/ retrieval subagent
+├── docs/second-brain/              # this repo's own Second Brain (dogfood)
 ├── .claude/
 │   ├── hooks/pre-commit                # this repo's bootstrapped git hook (dogfood; pre-0.3 location kept by the resolver — fresh repos default to .githooks/)
 │   └── settings.local.json             # per-contributor local config (gitignored)
@@ -61,9 +61,12 @@ repo/
   (`bootstrap-reminder.sh`) live in `hooks/` because a plugin serves them
   read-only from its cache — neither needs anything bootstrap produces to
   run.
-- **`docs/` and `.claude/` at the repo root** are this repo's own Second
+- **`docs/second-brain/` and `.claude/` at the repo root** are this repo's own Second
   Brain — a dogfooding instance, consumed via the local marketplace, not
-  part of what gets distributed. `.claude/` keeps only the bootstrapped
+  part of what gets distributed. The subdirectory is not cosmetic: it is
+  the literal the three enforcement points match on, so `docs/` itself is
+  free for a project's own documentation and is invisible to the check
+  (ADR 0008). `.claude/` keeps only the bootstrapped
   `pre-commit` (this repo predates the `.githooks` default, so the resolver
   keeps it on `.claude/hooks`; fresh destinations get `.githooks/`) and the
   gitignored `settings.local.json`; the runtime (skills, agent, Stop hook)
@@ -75,4 +78,4 @@ repo/
   repo's own `plugin.json` version-bump discipline and is never
   distributed to a destination project (see ADR 0005).
 
-*Last updated: 2026-07-31 — verified against commit `81606ed`.*
+*Last updated: 2026-08-20 — verified against commit `98b5062`.*

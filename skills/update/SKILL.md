@@ -1,9 +1,9 @@
 ---
 name: update
 description: >
-  Updates the project's "Second Brain" documentation under docs/ (e.g.
+  Updates the project's "Second Brain" documentation under docs/second-brain/ (e.g.
   architecture.md, database.md, patterns.md, glossary.md, layout.md,
-  testing.md, docs/README.md, plus docs/adr/ for decisions — the exact
+  testing.md, docs/second-brain/README.md, plus docs/second-brain/adr/ for decisions — the exact
   set of files can grow or shrink per project) to keep it aligned with
   the code. Trigger this skill when: (1) database tables,
   columns, migrations, or schema have changed; (2) a structural refactor
@@ -23,7 +23,7 @@ This skill keeps the project's technical documentation (the "second
 brain") in sync with the actual state of the code, so that any future AI
 agent (including yourself in a later session) can get oriented without
 having to re-read the entire codebase. It is the single source of truth
-for this policy — `CLAUDE.md` and `docs/README.md` only point here, they
+for this policy — `CLAUDE.md` and `docs/second-brain/README.md` only point here, they
 don't restate the rules.
 
 ## Memory routing
@@ -33,29 +33,29 @@ destinations exist, each with a different scope and lifetime:
 
 | What you learned | Where it goes | Why |
 |---|---|---|
-| Current state of the system (schema, architecture, layout, testing setup) | `docs/*.md` (this Second Brain) | Describes "what is true now"; must stay in sync with the code, one file per concern. |
-| A decision and its rationale/trade-offs | `docs/adr/NNNN-*.md` | Decisions are point-in-time and mostly irreversible; ADRs preserve the *why*, not just the *what*. |
-| An operating convention the agent must always apply in this project (e.g. "use uv, never pip", "always run X before Y") | `CLAUDE.md` / `.claude/rules/*.md` | Native, auto-loaded memory: enforced every session without relying on the agent remembering to check `docs/`. |
+| Current state of the system (schema, architecture, layout, testing setup) | `docs/second-brain/*.md` (this Second Brain) | Describes "what is true now"; must stay in sync with the code, one file per concern. |
+| A decision and its rationale/trade-offs | `docs/second-brain/adr/NNNN-*.md` | Decisions are point-in-time and mostly irreversible; ADRs preserve the *why*, not just the *what*. |
+| An operating convention the agent must always apply in this project (e.g. "use uv, never pip", "always run X before Y") | `CLAUDE.md` / `.claude/rules/*.md` | Native, auto-loaded memory: enforced every session without relying on the agent remembering to check `docs/second-brain/`. |
 | A preference or feedback about *how the user likes to work*, independent of this specific project | Claude Code's native user memory (not a project file) | Cross-project; belongs to the user-agent relationship, not to this codebase. |
 
-Rule of thumb: if the fact describes **the code**, it goes in `docs/`. If
+Rule of thumb: if the fact describes **the code**, it goes in `docs/second-brain/`. If
 it describes **a rule the agent must always follow**, it goes in
 `CLAUDE.md` / `.claude/rules/`. If it describes **how the user wants to be
 worked with**, it isn't a project file at all — use native user memory.
-Never restate a `CLAUDE.md`/`.claude/rules/` convention inside `docs/` (or
+Never restate a `CLAUDE.md`/`.claude/rules/` convention inside `docs/second-brain/` (or
 vice versa): pick one home per fact.
 
 ## Operating modes
 
-- **Direct write** for every file under `docs/` except `docs/adr/`
-  (this includes `docs/README.md`, the standard concern files shipped by
+- **Direct write** for every file under `docs/second-brain/` except `docs/second-brain/adr/`
+  (this includes `docs/second-brain/README.md`, the standard concern files shipped by
   the template, and any project-specific file added later, e.g.
-  `docs/patterns/caching.md` — see "What not to write"). Update these
+  `docs/second-brain/patterns/caching.md` — see "What not to write"). Update these
   pages in place, without asking for confirmation, because they describe
   the current state of the system and must stay accurate.
-- **Proposal mode** for new files in `docs/adr/`: a new architectural
+- **Proposal mode** for new files in `docs/second-brain/adr/`: a new architectural
   decision should not be written silently. Draft the content using
-  `docs/adr/template.md` as a base and present it to the user for
+  `docs/second-brain/adr/template.md` as a base and present it to the user for
   confirmation before saving it (see "ADR numbering" below for the file
   name). **Unattended fallback**: if running with no user available to
   confirm (e.g. a commit rejected by the pre-commit hook mid-automation),
@@ -66,7 +66,7 @@ vice versa): pick one home per fact.
 
 ## Procedure
 
-If any file under `docs/` still carries the `> Placeholder` marker
+If any file under `docs/second-brain/` still carries the `> Placeholder` marker
 (grep this ASCII-safe prefix, not the full em-dash text — re-encoding
 can silently corrupt `—` and hide the marker from a literal match), stop
 here and run the `second-brain:onboard` skill instead — it owns the
@@ -88,18 +88,18 @@ or as an end-of-session check:
    never as the file list itself.
 2. **Map changes to documents**, using the table in "Memory routing" above
    plus this file-level mapping:
-   - migrations, schema files, ORM models -> `docs/database.md`
-   - new/removed/moved packages, modules, folders -> `docs/layout.md`
+   - migrations, schema files, ORM models -> `docs/second-brain/database.md`
+   - new/removed/moved packages, modules, folders -> `docs/second-brain/layout.md`
    - new services, changed call graph, new external integration ->
-     `docs/architecture.md`
+     `docs/second-brain/architecture.md`
    - a repeated structural choice (new factory, new middleware
-     convention) -> `docs/patterns.md`
-   - new test types, frameworks, coverage tooling -> `docs/testing.md`
-   - a new domain term used in code/comments/commits -> `docs/glossary.md`
+     convention) -> `docs/second-brain/patterns.md`
+   - new test types, frameworks, coverage tooling -> `docs/second-brain/testing.md`
+   - a new domain term used in code/comments/commits -> `docs/second-brain/glossary.md`
    - a decision with real alternatives and trade-offs -> new ADR (see "ADR
      numbering" below)
-   - a file was added or removed under `docs/` -> also update
-     `docs/README.md`'s navigation table (see "What not to write")
+   - a file was added or removed under `docs/second-brain/` -> also update
+     `docs/second-brain/README.md`'s navigation table (see "What not to write")
 3. **Update, don't rewrite.** Edit only the relevant section of the target
    file; don't regenerate the whole document, and don't add a changelog
    inside status docs — git history is the changelog.
@@ -108,13 +108,13 @@ or as an end-of-session check:
    current files before considering it done.
 5. **Refresh the freshness footer** of every file you touched (see
    "Freshness footer" below).
-6. **Stage docs with the code.** `git add` the updated `docs/` files (and/or
+6. **Stage docs with the code.** `git add` the updated `docs/second-brain/` files (and/or
    `CLAUDE.md`) together with the source changes, so the pre-commit hook's
    requirement is satisfied honestly, not with a token touch.
 
 ### ADR numbering
 
-1. List `docs/adr/` and find every file matching `NNNN-*.md` (ignore
+1. List `docs/second-brain/adr/` and find every file matching `NNNN-*.md` (ignore
    `template.md`).
 2. Take the highest `NNNN` found; the new ADR is `NNNN+1`, zero-padded to
    4 digits. If no numbered ADR exists yet, start at `0001`.
@@ -162,7 +162,7 @@ Two legitimate reasons to bypass with `git commit --no-verify`:
 - a doc-only follow-up commit made immediately after the source commit
   it documents.
 
-Never touch `docs/` just to satisfy the hook ("doc-touch") — an edit
+Never touch `docs/second-brain/` just to satisfy the hook ("doc-touch") — an edit
 that doesn't correspond to a real change defeats the whole point of this
 system, and a reviewer (or a later run of this skill) will find a doc
 section that doesn't match anything real.
@@ -188,13 +188,13 @@ short:
 - If a file grows past roughly 200 lines, that's a signal to split it
   (e.g. `patterns.md` -> `patterns.md` + `patterns/caching.md`) rather
   than let it keep growing.
-- If you add, remove, or rename a file under `docs/`, update
-  `docs/README.md`'s navigation table in the same change: it is part of
+- If you add, remove, or rename a file under `docs/second-brain/`, update
+  `docs/second-brain/README.md`'s navigation table in the same change: it is part of
   "direct write" scope, exactly like the other status files.
 
 ## Freshness footer
 
-Every file in `docs/` (except `docs/README.md` and `docs/adr/*.md`) ends
+Every file in `docs/second-brain/` (except `docs/second-brain/README.md` and `docs/second-brain/adr/*.md`) ends
 with a footer line in exactly this format:
 
 ```text
@@ -237,4 +237,4 @@ the pre-commit hook): re-run the step-2 mapping against `git status
 --porcelain` and confirm every row that fires has a matching staged doc
 edit, footers included. Then stage the updated documentation files together
 with the code: the pre-commit hook requires every commit that changes
-source code to also include a change in `docs/` or in `CLAUDE.md`.
+source code to also include a change in `docs/second-brain/` or in `CLAUDE.md`.

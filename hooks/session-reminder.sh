@@ -11,18 +11,23 @@
 # stop_hook_active (present on stdin when this hook already blocked the
 # current stop) guards against looping forever.
 #
+# The Second Brain lives under docs/second-brain/ so it never collides with
+# the project's own documentation; everything else under docs/ is neither
+# documentation nor source here.
+#
 # Project-specific filters are NOT edited here (this file is served read-only
 # from the plugin cache): they live in the destination's committed
-# .second-brain.conf -- SB_INCLUDE_PATTERN (allowlist, source side only),
-# SB_EXCLUDE_EXTRA (added to the default denylist), SB_EXCLUDE_PATTERN
-# (replaces it). Keep the defaults and the reader byte-identical with
+# .second-brain.conf -- SB_INCLUDE_PATTERN (allowlist), SB_EXCLUDE_EXTRA
+# (added to the default denylist), SB_EXCLUDE_PATTERN (replaces it). All
+# three are applied to the source side only. Keep the defaults, the
+# evaluation order and the reader byte-identical with
 # bootstrap/payload/git-pre-commit and
 # bootstrap/payload/workflows/second-brain.yml (ADR 0002). No external
 # dependencies: bash + git only (no uv, no python, no jq).
 set -uo pipefail
 
-DEFAULT_EXCLUDE_PATTERN='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$|\.second-brain\.conf$)|(^|/)tests?/'
-DOCS_PATTERN='^docs/|^CLAUDE\.md$'
+DEFAULT_EXCLUDE_PATTERN='^(\.github/|docs/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$|\.second-brain\.conf$)|(^|/)tests?/'
+DOCS_PATTERN='^docs/second-brain/|^CLAUDE\.md$'
 
 # Read KEY from the .second-brain.conf-style file $1. Last assignment wins;
 # surrounding single/double quotes and trailing blanks are stripped; a missing
@@ -71,19 +76,23 @@ done < <(git status --porcelain -z 2>/dev/null)
 
 [ "${#files[@]}" -eq 0 ] && exit 0
 
+# Evaluation order: the docs/source split runs on the RAW file list, and the
+# denylist is applied to the source side only -- the same asymmetry
+# INCLUDE_PATTERN already has. A filter that answers "is this a source
+# change?" must not be able to remove a file from the "documentation
+# changed" set; that is what lets the broad `docs/` entry in the denylist
+# coexist with docs/second-brain/ (ADR 0008, amending ADR 0007).
 changed="$(printf '%s\n' "${files[@]}")"
-relevant="$(printf '%s\n' "$changed" | grep -vE "$EXCLUDE_PATTERN" || true)"
-[ -z "$relevant" ] && exit 0
-
-source_changed="$(printf '%s\n' "$relevant" | grep -vE "$DOCS_PATTERN" || true)"
-docs_changed="$(printf '%s\n' "$relevant" | grep -E "$DOCS_PATTERN" || true)"
+docs_changed="$(printf '%s\n' "$changed" | grep -E "$DOCS_PATTERN" || true)"
+source_changed="$(printf '%s\n' "$changed" | grep -vE "$DOCS_PATTERN" || true)"
+source_changed="$(printf '%s\n' "$source_changed" | grep -vE "$EXCLUDE_PATTERN" || true)"
 
 if [ -n "$INCLUDE_PATTERN" ] && [ -n "$source_changed" ]; then
     source_changed="$(printf '%s\n' "$source_changed" | grep -E "$INCLUDE_PATTERN" || true)"
 fi
 
 if [ -n "$source_changed" ] && [ -z "$docs_changed" ]; then
-    printf '%s\n' '{"decision":"block","reason":"[SECOND BRAIN SYSTEM] Uncommitted source changes with no matching docs/ update. Run the second-brain:update skill, then stop again -- do not hand-edit docs/ just to pass this check."}'
+    printf '%s\n' '{"decision":"block","reason":"[SECOND BRAIN SYSTEM] Uncommitted source changes with no matching docs/second-brain/ update. Run the second-brain:update skill, then stop again -- do not hand-edit docs/second-brain/ just to pass this check."}'
 fi
 
 exit 0

@@ -2,10 +2,10 @@
 name: onboard
 description: >
   One-time bootstrap of the project's "Second Brain" documentation:
-  replaces every `> Placeholder` marker found anywhere under docs/ (e.g.
+  replaces every `> Placeholder` marker found anywhere under docs/second-brain/ (e.g.
   architecture.md, database.md, layout.md, testing.md, patterns.md,
   glossary.md) with content verified against the real codebase. Trigger
-  this skill when: (1) any file under docs/ still contains the
+  this skill when: (1) any file under docs/second-brain/ still contains the
   `> Placeholder` marker (fresh template install never populated for
   this project); (2) the user explicitly asks to "onboard", "bootstrap",
   or "populate" the Second Brain. Once every placeholder is gone, this
@@ -25,7 +25,7 @@ and applies unchanged from the moment onboarding finishes.
 
 ## When this skill is done
 
-Check every file under `docs/` for the `> Placeholder` marker (grep this
+Check every file under `docs/second-brain/` for the `> Placeholder` marker (grep this
 ASCII-safe prefix, not the full em-dash text — re-encoding can silently
 corrupt `—` and hide the marker from a literal match). If none remains,
 onboarding is complete — don't re-run this skill "just in case"; use
@@ -34,8 +34,8 @@ first real edit to a file this skill just wrote.
 
 ## Procedure
 
-1. **Detect scope.** Grep every file under `docs/` (recursively,
-   excluding `docs/adr/`) for `> Placeholder` — the ASCII-safe prefix,
+1. **Detect scope.** Grep every file under `docs/second-brain/` (recursively,
+   excluding `docs/second-brain/adr/`) for `> Placeholder` — the ASCII-safe prefix,
    not the full em-dash marker — to get the exact list of files still
    needing onboarding. Skip files already populated (e.g. a partial
    manual onboarding happened before).
@@ -44,12 +44,12 @@ first real edit to a file this skill just wrote.
 
    | File | Explore for | Where to look |
    |---|---|---|
-   | `docs/layout.md` | Top-level folder tree and each folder's responsibility | repo root listing, package/module boundaries |
-   | `docs/architecture.md` | Entry points, main call graph, external integrations | main/entry files, service boundaries, config for external APIs |
-   | `docs/database.md` | Schema, tables, relationships, migration tooling | migration files, ORM models, schema.sql / DDL |
-   | `docs/testing.md` | Test framework, how tests run, coverage tooling | test config files, CI test steps, `tests/` structure |
-   | `docs/patterns.md` | Recurring idioms actually used in the code (not generic textbook patterns) | repeated structural choices across modules (factories, middleware, DI) |
-   | `docs/glossary.md` | Domain terms used in code, comments, and commit history | identifier names, docstrings, `git log` messages |
+   | `docs/second-brain/layout.md` | Top-level folder tree and each folder's responsibility | repo root listing, package/module boundaries |
+   | `docs/second-brain/architecture.md` | Entry points, main call graph, external integrations | main/entry files, service boundaries, config for external APIs |
+   | `docs/second-brain/database.md` | Schema, tables, relationships, migration tooling | migration files, ORM models, schema.sql / DDL |
+   | `docs/second-brain/testing.md` | Test framework, how tests run, coverage tooling | test config files, CI test steps, `tests/` structure |
+   | `docs/second-brain/patterns.md` | Recurring idioms actually used in the code (not generic textbook patterns) | repeated structural choices across modules (factories, middleware, DI) |
+   | `docs/second-brain/glossary.md` | Domain terms used in code, comments, and commit history | identifier names, docstrings, `git log` messages |
 
    Work through the files in this order: `layout.md` first (it orients
    every later file). After that, the remaining five explorations are
@@ -80,8 +80,8 @@ first real edit to a file this skill just wrote.
    the format defined in `second-brain:update`'s SKILL.md ("Freshness
    footer" section) — this is the first time these files get one, since
    placeholders are explicitly exempt from it.
-5. **Update `docs/README.md`'s navigation table** only if the set of
-   files under `docs/` changed (it shouldn't, during onboarding — the
+5. **Update `docs/second-brain/README.md`'s navigation table** only if the set of
+   files under `docs/second-brain/` changed (it shouldn't, during onboarding — the
    template already ships the full set).
 6. **Propose retroactive ADRs last, in proposal mode** (see
    `second-brain:update`'s SKILL.md — same confirmation flow and
@@ -93,7 +93,7 @@ first real edit to a file this skill just wrote.
    from a pre-commit rejection or from `second-brain:update`'s
    placeholder guard, a source change is still pending (staged or
    uncommitted) that hasn't been mapped to docs yet — onboarding
-   populates docs/ from the codebase as it stands, which only
+   populates docs/second-brain/ from the codebase as it stands, which only
    incidentally covers that specific change. Finish by running
    `second-brain:update` for that pending change, then retry the commit.
 

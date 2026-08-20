@@ -4,8 +4,14 @@
 #
 # Scaffolds the files that MUST live inside a destination git repository
 # (committed, so they survive fresh clones / teammates who never installed
-# / CI): the docs/ set, the CLAUDE.md marker block, the git pre-commit hook
-# (+ core.hooksPath wiring), and the CI workflow.
+# / CI): the docs/second-brain/ set, the CLAUDE.md marker block, the git
+# pre-commit hook (+ core.hooksPath wiring), and the CI workflow.
+#
+# The doc set lives in its own subdirectory of docs/ so it never collides
+# with the destination's own documentation. A repo bootstrapped before that
+# change carries the doc set directly under docs/; the scaffold detects that
+# layout, skips itself and prints the git mv needed to migrate, rather than
+# seeding a second, empty doc set next to the populated one.
 #
 # Guarantees:
 #   * create-only by default: an existing file is NEVER overwritten;
@@ -27,9 +33,9 @@
 #
 # The only overwrite path is --refresh-system, and it is scoped to exactly
 # the git pre-commit hook, the CI workflow, and the CLAUDE.md block BETWEEN
-# its markers -- docs/, .second-brain.conf, and any user prose outside the
-# markers are never touched. .second-brain.conf is where a destination tunes
-# the path filters (SB_INCLUDE_PATTERN / SB_EXCLUDE_EXTRA /
+# its markers -- docs/second-brain/, .second-brain.conf, and any user prose
+# outside the markers are never touched. .second-brain.conf is where a
+# destination tunes the path filters (SB_INCLUDE_PATTERN / SB_EXCLUDE_EXTRA /
 # SB_EXCLUDE_PATTERN) precisely because it is create-only: filters edited
 # there survive every refresh, unlike the patterns inside the refreshed
 # pre-commit block and CI workflow.
@@ -43,6 +49,12 @@ PAYLOAD="$SCRIPT_DIR/payload"
 
 BEGIN='<!-- BEGIN SECOND BRAIN SYSTEM'
 END='<!-- END SECOND BRAIN SYSTEM -->'
+
+# Where the doc set is scaffolded, relative to the destination root. Fixed,
+# not configurable: the same literal is hardcoded in the three enforcement
+# points, in the CLAUDE.md block's @-import, and in the skill/agent prompts
+# served read-only from the plugin cache (ADR 0008).
+DOCS_DIR='docs/second-brain'
 
 # Shell-comment markers delimiting our check inside the pre-commit hook.
 # The payload ships with them so the same block is used whether the whole
@@ -309,10 +321,51 @@ ensure_gitattributes_lf() {
     echo "  [CREATE] .gitattributes ($HOOKS_DIR/pre-commit eol=lf)"
 }
 
-# 1. docs/ scaffold (create-only, recursive).
-while IFS= read -r -d '' f; do
-    copy_if_absent "$f" "docs/${f#"$PAYLOAD"/docs/}"
-done < <(find "$PAYLOAD/docs" -type f -print0)
+# True if this destination carries a pre-1.0 doc set directly under docs/:
+# our navigation map is there, and the migrated one is not.
+#
+# The probe is docs/second-brain/README.md, not the directory -- an empty
+# docs/second-brain/ (a half-done migration, or a plain mkdir) would
+# otherwise switch the detection off and let the scaffold seed placeholders
+# next to the real docs, which is the exact accident this guards against.
+#
+# Both "Second Brain" and "Navigation Map" must appear in docs/README.md.
+# Either alone is plausible in a project's own docs index; together they are
+# our template's heading. Matched with grep -F on ASCII substrings -- the
+# heading's em-dash would break on a re-encoded checkout.
+has_legacy_docs_layout() {
+    [ -f "$DOCS_DIR/README.md" ] && return 1
+    [ -f docs/README.md ] || return 1
+    grep -qF "Second Brain" docs/README.md 2>/dev/null &&
+        grep -qF "Navigation Map" docs/README.md 2>/dev/null
+}
+
+# Print the migration instructions for a legacy layout. Deliberately does not
+# run them: bootstrap.sh never moves or deletes user content, and only the
+# destination knows which files under docs/ are actually ours.
+warn_legacy_docs_layout() {
+    echo "  [WARN] a Second Brain doc set was found directly under docs/ (pre-1.0 layout)."
+    echo "         The doc set now lives in $DOCS_DIR/, so the scaffold was SKIPPED"
+    echo "         to avoid seeding an empty second copy next to your real docs."
+    echo "         Migrate, then re-run this bootstrap:"
+    echo ""
+    echo "           mkdir -p $DOCS_DIR"
+    echo "           git mv docs/README.md docs/architecture.md docs/database.md \\"
+    echo "                  docs/glossary.md docs/layout.md docs/patterns.md \\"
+    echo "                  docs/testing.md docs/adr $DOCS_DIR/"
+    echo ""
+    echo "         (drop from that list anything your project doesn't have, and"
+    echo "          leave behind any file under docs/ that is your own doc, not ours)"
+}
+
+# 1. docs/second-brain/ scaffold (create-only, recursive).
+if has_legacy_docs_layout; then
+    warn_legacy_docs_layout
+else
+    while IFS= read -r -d '' f; do
+        copy_if_absent "$f" "$DOCS_DIR/${f#"$PAYLOAD"/docs/}"
+    done < <(find "$PAYLOAD/docs" -type f -print0)
+fi
 
 # 2. CLAUDE.md marker block: append if the block isn't already present.
 #    Never replaces an existing block on a plain run (only --refresh-system
@@ -374,8 +427,8 @@ copy_if_absent "$PAYLOAD/workflows/second-brain.yml" ".github/workflows/second-b
 copy_if_absent "$PAYLOAD/second-brain.conf" ".second-brain.conf"
 
 # 6. --refresh-system: overwrite ONLY the two system files and the
-#    CLAUDE.md block between its markers. docs/, .second-brain.conf and user
-#    prose untouched.
+#    CLAUDE.md block between its markers. docs/second-brain/,
+#    .second-brain.conf and user prose untouched.
 if [ "$REFRESH" = 1 ]; then
     echo ""
     echo "  Refreshing system files ..."

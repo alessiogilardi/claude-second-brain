@@ -11,7 +11,8 @@ top-level folder (e.g. `src/`, `tests/`, `scripts/`, `docs/`).
 repo/
 ├── src/            # description
 ├── tests/          # description
-└── docs/           # this documentation
+└── docs/
+    └── second-brain/  # this documentation
 ```
 
 ## Placement conventions

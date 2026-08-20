@@ -2,17 +2,23 @@
 #
 # [SECOND BRAIN SYSTEM] pre-commit hook
 #
-# Blocks the commit if there are staged changes outside docs/ and CLAUDE.md
-# without the documentation (docs/ or CLAUDE.md) having been updated
-# accordingly. Forces the team (or Claude Code) to keep the "second brain"
-# aligned with the code on every commit.
+# Blocks the commit if there are staged changes outside docs/second-brain/
+# and CLAUDE.md without the documentation (docs/second-brain/ or CLAUDE.md)
+# having been updated accordingly. Forces the team (or Claude Code) to keep
+# the "second brain" aligned with the code on every commit.
+#
+# The Second Brain lives in its own subdirectory so it never collides with
+# the project's own documentation: everything else under docs/ is NEITHER
+# documentation nor source here -- editing docs/api.md alone changes
+# nothing, and it does not satisfy the check either.
 #
 # NOTE (anti-gaming): this check is *syntactic*, not semantic. It only
-# verifies that *some* file under docs/ or CLAUDE.md was staged alongside
-# source changes -- it cannot verify the change is actually relevant or
-# truthful. A green hook is not proof of alignment: the real verification
-# is the second-brain:update skill's checklist. Touching docs/ just to
-# satisfy this hook ("doc-touch") defeats its purpose.
+# verifies that *some* file under docs/second-brain/ or CLAUDE.md was staged
+# alongside source changes -- it cannot verify the change is actually
+# relevant or truthful. A green hook is not proof of alignment: the real
+# verification is the second-brain:update skill's checklist. Touching
+# docs/second-brain/ just to satisfy this hook ("doc-touch") defeats its
+# purpose.
 #
 # The check lives in the marker-delimited block below. On a fresh repo this
 # whole file is installed as the pre-commit; when a destination already has
@@ -27,17 +33,19 @@
 # .second-brain.conf at the repo root instead (create-only, never refreshed);
 # it is read here, in the plugin's Stop hook, and in the CI workflow:
 #   * SB_INCLUDE_PATTERN -- allowlist; only matching paths count as source
-#     (empty = all). Applied to the source side only, so docs/ and CLAUDE.md
-#     stay recognised as documentation regardless. Fail-open by nature: a new
-#     directory missing from the allowlist is never checked.
+#     (empty = all). Fail-open by nature: a new directory missing from the
+#     allowlist is never checked.
 #   * SB_EXCLUDE_EXTRA   -- OR-ed with the default denylist below.
 #   * SB_EXCLUDE_PATTERN -- replaces the default denylist entirely.
-# The defaults exclude the committed hooks dir (.githooks/ by default),
-# .claude/, .gitattributes and .second-brain.conf so installing or refreshing
-# the system files never trips the check; a non-default --hooks-dir must be
-# added via the conf. Legitimate reasons to bypass with --no-verify: a WIP
-# commit on a private branch you'll squash later, or a doc-only follow-up
-# commit you are about to make immediately after.
+# Both are applied to the source side ONLY, so docs/second-brain/ and
+# CLAUDE.md stay recognised as documentation regardless of how they are set.
+# The defaults exclude docs/ (the project's own documentation), the committed
+# hooks dir (.githooks/ by default), .claude/, .gitattributes and
+# .second-brain.conf so installing or refreshing the system files never trips
+# the check; a non-default --hooks-dir must be added via the conf. Legitimate
+# reasons to bypass with --no-verify: a WIP commit on a private branch you'll
+# squash later, or a doc-only follow-up commit you are about to make
+# immediately after.
 #
 # tests?/ intentionally matches at any depth (via "(^|/)"), not just
 # top-level, so nested test dirs (e.g. src/pkg/tests/) are excluded too.
@@ -48,14 +56,15 @@
 # *config* files specifically (pytest.ini, conftest.py, CI test steps)
 # if stronger enforcement is needed.
 #
-# Keep the default patterns and the .second-brain.conf reader byte-identical
-# with the plugin's session-reminder.sh and the CI workflow (ADR 0002).
-# Variables and functions are _sb_-prefixed, and the reader is unset at the
-# end, so the block never clobbers a host hook's own names when injected.
+# Keep the default patterns, the evaluation order and the .second-brain.conf
+# reader byte-identical with the plugin's session-reminder.sh and the CI
+# workflow (ADR 0002). Variables and functions are _sb_-prefixed, and the
+# reader is unset at the end, so the block never clobbers a host hook's own
+# names when injected.
 
 # >>> BEGIN SECOND BRAIN SYSTEM pre-commit >>>
-_sb_default_exclude='^(\.github/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$|\.second-brain\.conf$)|(^|/)tests?/'
-_sb_docs_pattern='^docs/|^CLAUDE\.md$'
+_sb_default_exclude='^(\.github/|docs/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$|\.second-brain\.conf$)|(^|/)tests?/'
+_sb_docs_pattern='^docs/second-brain/|^CLAUDE\.md$'
 
 # Read KEY from the .second-brain.conf-style file $1. Last assignment wins;
 # surrounding single/double quotes and trailing blanks are stripped; a missing
@@ -78,11 +87,17 @@ if [ -n "$_sb_extra" ]; then
     _sb_exclude="($_sb_exclude)|($_sb_extra)"
 fi
 
+# Evaluation order: the docs/source split runs on the RAW file list, and the
+# denylist is applied to the source side only -- the same asymmetry
+# SB_INCLUDE_PATTERN already has. A filter that answers "is this a source
+# change?" must not be able to remove a file from the "documentation
+# changed" set; that is what lets the broad `docs/` entry in the denylist
+# coexist with docs/second-brain/ (ADR 0008, amending ADR 0007).
 _sb_staged=$(git diff --cached --name-only)
 if [ -n "$_sb_staged" ]; then
-    _sb_relevant=$(printf '%s\n' "$_sb_staged" | grep -vE "$_sb_exclude") || true
-    _sb_docs=$(printf '%s\n' "$_sb_relevant" | grep -E "$_sb_docs_pattern") || true
-    _sb_source=$(printf '%s\n' "$_sb_relevant" | grep -vE "$_sb_docs_pattern") || true
+    _sb_docs=$(printf '%s\n' "$_sb_staged" | grep -E "$_sb_docs_pattern") || true
+    _sb_source=$(printf '%s\n' "$_sb_staged" | grep -vE "$_sb_docs_pattern") || true
+    _sb_source=$(printf '%s\n' "$_sb_source" | grep -vE "$_sb_exclude") || true
     if [ -n "$_sb_include" ]; then
         _sb_source=$(printf '%s\n' "$_sb_source" | grep -E "$_sb_include") || true
     fi
@@ -92,15 +107,15 @@ if [ -n "$_sb_staged" ]; then
         echo "  [SECOND BRAIN SYSTEM] COMMIT REJECTED"
         echo "=================================================================="
         echo ""
-        echo "  You have staged source code changes, but no change in docs/"
-        echo "  or in the CLAUDE.md file."
+        echo "  You have staged source code changes, but no change in"
+        echo "  docs/second-brain/ or in the CLAUDE.md file."
         echo ""
         echo "  Claude, run the second-brain:update skill, then retry the"
-        echo "  commit -- do not hand-edit docs/ just to pass this check,"
-        echo "  that skips the skill's routing/footer/ADR steps. If this"
-        echo "  is a false positive, add the path to SB_EXCLUDE_EXTRA in"
-        echo "  .second-brain.conf. For a legitimate one-off exception,"
-        echo "  see the second-brain:update skill and use"
+        echo "  commit -- do not hand-edit docs/second-brain/ just to pass"
+        echo "  this check, that skips the skill's routing/footer/ADR steps."
+        echo "  If this is a false positive, add the path to"
+        echo "  SB_EXCLUDE_EXTRA in .second-brain.conf. For a legitimate"
+        echo "  one-off exception, see the second-brain:update skill and use"
         echo "  git commit --no-verify."
         echo ""
         echo "=================================================================="

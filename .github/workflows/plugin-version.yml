@@ -6,13 +6,13 @@
 # There is no local hook for this: .claude/hooks/pre-commit is bootstrap-
 # payload-managed content and --refresh-system overwrites it unconditionally,
 # so a hand-added check there would be silently clobbered on the next
-# refresh (see docs/adr/0005-semver-and-ci-enforced-version-bump.md). CI is
+# refresh (see docs/second-brain/adr/0005-semver-and-ci-enforced-version-bump.md). CI is
 # the only enforcement point.
 #
 # This can only verify a version bump *happened*, is well-formed
 # MAJOR.MINOR.PATCH, and increased -- not that the correct tier (major /
 # minor / patch) was chosen for the nature of the change. That judgment
-# stays with the author and reviewer; see docs/patterns.md and README.md
+# stays with the author and reviewer; see docs/second-brain/patterns.md and README.md
 # for the tier definitions.
 name: Plugin version bump check
 
@@ -56,7 +56,7 @@ jobs:
           version_changed=$(printf '%s\n' "$changed_files" | grep -Fx '.claude-plugin/plugin.json' || true)
 
           if [ -n "$runtime_changed" ] && [ -z "$version_changed" ]; then
-            echo "::error::[PLUGIN VERSION] hooks/, skills/, agents/, commands/, or bootstrap/ changed but .claude-plugin/plugin.json was not. Bump \"version\" (see docs/patterns.md) so /plugin marketplace update propagates this change to installed consumers."
+            echo "::error::[PLUGIN VERSION] hooks/, skills/, agents/, commands/, or bootstrap/ changed but .claude-plugin/plugin.json was not. Bump \"version\" (see docs/second-brain/patterns.md) so /plugin marketplace update propagates this change to installed consumers."
             exit 1
           fi
 
