@@ -60,8 +60,14 @@ lives in the plugin; everything that must be committed is bootstrapped.
   project tunes which paths count as source: `SB_INCLUDE_PATTERN`
   (allowlist), `SB_EXCLUDE_EXTRA` (added
   to the default denylist), `SB_EXCLUDE_PATTERN` (replaces it) — all three
-  applied to the source side only. Read — by
-  parsing, never by sourcing — by all three enforcement points, and
+  applied to the source side only. Also carries `SB_GATE` (`commit`
+  default, or `push`), which controls *when* the mismatch blocks rather
+  than *what* counts as source: `commit` rejects in the pre-commit hook
+  per commit (unchanged default behavior); `push` makes the pre-commit
+  hook advisory and moves the block to a branch-wide pre-push check
+  instead — this repo runs `push` on itself (see ADR 0009, amending ADR
+  0002). Read — by
+  parsing, never by sourcing — by all enforcement points, and
   create-only so `--refresh-system` never reverts it (see ADR 0007).
 - **`hooks/hooks.json` + `hooks/session-reminder.sh`** — the plugin's Stop
   hook. `hooks.json` wires the Stop event to
@@ -137,6 +143,9 @@ values do not, since all three read the destination's single
 
 ## Relevant architectural decisions
 
+- [ADR 0009](./adr/0009-configurable-gate-timing.md) — `SB_GATE`
+  (`commit`/`push`) lets the blocking check run per-commit (default) or
+  branch-wide at push time; amends ADR 0002 (mirror count three -> four).
 - [ADR 0008](./adr/0008-second-brain-docs-in-a-docs-subdirectory.md) — the
   doc set moved to a fixed `docs/second-brain/`, and the denylist became
   source-side only so `docs/` can be excluded without swallowing it.
@@ -160,4 +169,4 @@ values do not, since all three read the destination's single
 - [ADR 0001](./adr/0001-manifest-gated-sync-for-system-owned-files.md) —
   the previous SHA-256-manifest install strategy, **superseded by 0003**.
 
-*Last updated: 2026-08-20 — verified against commit `98b5062`.*
+*Last updated: 2026-08-28 — verified against commit `9bb84ec`.*
