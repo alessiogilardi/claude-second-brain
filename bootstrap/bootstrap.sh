@@ -125,10 +125,18 @@ copy_if_absent() {
 # normalises Windows 8.3 short names and case; a relative path (the default
 # and the only accepted --hooks-dir form) is echoed unchanged. A path outside
 # the tree yields an empty prefix and is left as-is for the caller to reject.
+#
+# The Windows arm matches a drive letter followed by ANY separator, not just a
+# forward slash: git stores whatever core.hooksPath was set to, and a value
+# saved as `C:\repo\.claude\hooks` (backslashes) is just as absolute as
+# `C:/repo/.claude/hooks`. Recognising only the latter left the backslash form
+# unrelativized, so it reached .gitattributes as a dead absolute pin -- the
+# very pathology this function exists to prevent. `git -C` and `test -d`
+# both accept the backslash form as-is, so no separator rewriting is needed.
 relativize_hooks_dir() {
     local p="$1" rel
     case "$p" in
-        /*|[A-Za-z]:/*)
+        /*|[A-Za-z]:*)
             if [ -d "$p" ]; then
                 rel="$(git -C "$p" rev-parse --show-prefix 2>/dev/null | sed 's:/*$::')"
                 [ -n "$rel" ] && p="$rel"
@@ -295,23 +303,41 @@ warn_shadowed_git_hooks() {
 # for other paths is never disturbed.
 GITATTR_COMMENT='# [SECOND BRAIN SYSTEM] keep the git hook LF so #!/bin/sh works on every platform'
 
-# Self-heal a pin written absolute by a pre-0.3.2 install (before the hooks
-# dir was normalised to repo-relative). As a .gitattributes pattern an
-# absolute path matches nothing, so that pin is silently dead -- and because
-# the correct relative entry is then missing, every later run appends another
-# block, accumulating a dead rule plus a duplicate comment. The line is
-# unambiguously ours (it pins a `*/pre-commit` to eol=lf), so it is rewritten
-# in place rather than left to rot; duplicates of our entry and our comment
-# collapse to the first occurrence. Nothing else in the file is touched.
+# Self-heal a pin for hook $2 written with an absolute path. Two installs
+# produce one: a pre-0.3.2 run (before the hooks dir was normalised to
+# repo-relative), and any run whose core.hooksPath was stored as a Windows
+# backslash path, which relativize_hooks_dir did not recognise as absolute
+# before the multi-hook change. As a .gitattributes pattern an absolute path
+# matches nothing, so that pin is silently dead -- and because the correct
+# relative entry is then missing, every later run appends another block,
+# accumulating a dead rule plus a duplicate comment. The line is unambiguously
+# ours (it pins one of our hooks to eol=lf), so it is rewritten in place rather
+# than left to rot; duplicates of our entry and our comment collapse to the
+# first occurrence. Relative pins -- ours and any foreign one -- are untouched.
+#
+# "Absolute" is "starts with / or with a drive letter", asserting nothing about
+# the separator that follows, so the backslash form is caught too. The awk side
+# deliberately contains no literal backslash (which does not survive every
+# quoting layer intact): the trailing-hook-name test uses substr(), and the
+# character before the name only has to be a non-word one, i.e. some separator.
 normalize_gitattributes_entry() {
-    local entry="$1" tmp
+    local entry="$1" name="$2" tmp
     [ -f .gitattributes ] || return 0
-    grep -qE '^([A-Za-z]:)?/[^[:space:]]*pre-commit[[:space:]]+text[[:space:]]+eol=lf[[:space:]]*$' .gitattributes || return 0
+    grep -qE "^([A-Za-z]:|/)[^[:space:]]*$name[[:space:]]+text[[:space:]]+eol=lf[[:space:]]*\$" .gitattributes || return 0
     tmp="$(mktemp)"
-    awk -v e="$entry" -v c="$GITATTR_COMMENT" '
+    awk -v e="$entry" -v c="$GITATTR_COMMENT" -v name="$name" '
+        function is_dead_pin(   p, sep) {
+            if (NF != 3 || $2 != "text" || $3 != "eol=lf") return 0
+            p = $1
+            if (p !~ /^([A-Za-z]:|[/])/) return 0
+            if (length(p) <= length(name)) return 0
+            if (substr(p, length(p) - length(name) + 1) != name) return 0
+            sep = substr(p, length(p) - length(name), 1)
+            return sep !~ /[A-Za-z0-9._-]/
+        }
         $0 == c { if (cseen++) next; print; next }
         $0 == e { if (eseen++) next; print; next }
-        /^([A-Za-z]:)?\/[^[:space:]]*pre-commit[[:space:]]+text[[:space:]]+eol=lf[[:space:]]*$/ {
+        is_dead_pin() {
             if (eseen++) next
             print e
             next
@@ -320,19 +346,14 @@ normalize_gitattributes_entry() {
     ' .gitattributes > "$tmp"
     cat "$tmp" > .gitattributes
     rm -f "$tmp"
-    echo "  [FIX] .gitattributes (dead absolute pre-commit pin rewritten to $entry)"
+    echo "  [FIX] .gitattributes (dead absolute $name pin rewritten to $entry)"
 }
 
-# normalize_gitattributes_entry's self-heal regex targets `*/pre-commit …
-# eol=lf` specifically -- a dead *absolute* pin can only exist for
-# pre-commit, since pre-push never shipped before this multi-hook change (so
-# no pre-0.3.2 install ever wrote an absolute pin for it). The regex is left
-# pre-commit-only rather than generalised.
 ensure_gitattributes_lf() {
     local name entry
     for name in pre-commit pre-push; do
         entry="$HOOKS_DIR/$name text eol=lf"
-        normalize_gitattributes_entry "$entry"
+        normalize_gitattributes_entry "$entry" "$name"
         if [ -f .gitattributes ] && grep -qF "$entry" .gitattributes; then
             echo "  [SKIP] .gitattributes ($HOOKS_DIR/$name eol=lf present)"
         else

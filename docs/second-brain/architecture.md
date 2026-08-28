@@ -40,7 +40,10 @@ committed is bootstrapped.
   Installs BOTH the git `pre-commit` and `pre-push` hooks into a
   committed, configurable hooks dir (`--hooks-dir`, default `.githooks`)
   and points `core.hooksPath` at it (only when unset-and-ours or already
-  ours — never clobbers husky/other), through a single hook-name-
+  ours — never clobbers husky/other; an existing absolute value is first
+  normalized back to repo-relative, in the `C:/…` and the `C:\…` spelling
+  alike, so it can never leak into `.gitattributes` as a dead pin), through
+  a single hook-name-
   parameterized helper (`install_or_inject_hook "<name>"` /
   `refresh_hook "<name>"`, called once per hook — see "Marker-delimited
   block merge" in patterns.md), and pins both hooks to LF in the
@@ -191,4 +194,4 @@ default / `push`), read by both git hooks (ADR 0009).
 - [ADR 0001](./adr/0001-manifest-gated-sync-for-system-owned-files.md) —
   the previous SHA-256-manifest install strategy, **superseded by 0003**.
 
-*Last updated: 2026-08-28 — verified against commit `8e3279c`.*
+*Last updated: 2026-08-28 — verified against commit `d4b05ca`.*

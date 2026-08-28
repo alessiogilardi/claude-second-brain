@@ -93,16 +93,26 @@ scriptable, and splits in two.
   over both hook names; each created if absent, appended if present
   without disturbing existing rules, skipped if already there), so the
   `#!/bin/sh` hooks can't be CRLF-broken by a Windows checkout;
-- **LF pin self-heal** (pre-commit only — pre-push never shipped before
-  this multi-hook change, so no pre-0.3.2 install ever wrote a dead
-  absolute pin for it) — seed `.gitattributes` with an absolute pin
-  (`C:/…/.githooks/pre-commit text eol=lf` and/or a `/unix/abs/…` one), a
-  duplicate `# [SECOND BRAIN SYSTEM]` comment, and a foreign rule: the run
-  reports `[FIX]`, collapses them into a single repo-relative entry under one
-  comment, leaves the foreign rules untouched, and a re-run is a byte-for-byte
-  no-op (`[SKIP]`). A foreign *relative* `pre-commit` pin (e.g.
+- **LF pin self-heal** (per hook — `normalize_gitattributes_entry` takes the
+  hook name, so `pre-push` is covered exactly like `pre-commit`) — seed
+  `.gitattributes` with dead absolute pins in every form: `C:/…/.githooks/
+  pre-commit text eol=lf`, a `/unix/abs/…` one, and the Windows backslash
+  form `C:\…\.claude\hooks/pre-push text eol=lf`; plus a duplicate
+  `# [SECOND BRAIN SYSTEM]` comment and a foreign rule. The run reports one
+  `[FIX]` per hook, collapses them into a single repo-relative entry per hook
+  under one comment, leaves the foreign rules untouched, and a re-run is a
+  byte-for-byte no-op (`[SKIP]`, no `[FIX]`). A foreign *relative* pin (e.g.
   `tools/hooks/pre-commit`) must survive; with a legacy `.claude/hooks`
   install the rewritten entry must point there, not at `.githooks`;
+- **absolute `core.hooksPath` normalization** — set `core.hooksPath` to an
+  absolute path in both spellings (`C:/repo/.claude/hooks` and
+  `C:\repo\.claude\hooks`) and re-run: the log must report `core.hooksPath
+  normalized to relative .claude/hooks` and the pins written that run must be
+  repo-relative. The backslash spelling is the regression that matters —
+  `relativize_hooks_dir` used to require a forward slash after the drive
+  letter, so a backslash value stayed absolute, leaked into `.gitattributes`
+  as a dead pin, and (the correct relative entry being absent) grew another
+  one on every run;
 - **doc-set location** (ADR 0008) — a file elsewhere under `docs/` (e.g.
   `docs/api.md`) is neutral: staged alone the commit passes, staged with a
   source change it is rejected, and it never satisfies the check. The same
@@ -156,4 +166,4 @@ a real PR.
 If a framework is introduced later, the deterministic core above is the
 natural first suite (e.g. a committed `verify.sh` or a bats test file).
 
-*Last updated: 2026-08-28 — verified against commit `8e3279c`.*
+*Last updated: 2026-08-28 — verified against commit `d4b05ca`.*
