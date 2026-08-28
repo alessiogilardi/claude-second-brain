@@ -26,9 +26,10 @@ Run `skill: "second-brain:update"` after:
 
 ### Strict Commit Rule
 Commits touching code **MUST** stage an update to `docs/second-brain/` **or
-this file**. Documentation of yours living elsewhere under `docs/` does not
-count — that directory is yours, `docs/second-brain/` is the Second Brain.
-If rejected: 1. Run skill -> 2. Stage docs -> 3. Retry. Never use dummy updates.
+this file**. (If the project sets `SB_GATE=push` in `.second-brain.conf`, the
+requirement applies to the branch rather than to each commit — the pre-push
+hook checks the whole branch diff.) If rejected: 1. Run skill -> 2. Stage docs
+-> 3. Retry. Never use dummy updates.
 **Never hand-edit `docs/second-brain/*.md` to satisfy the pre-commit check.**
 The check is syntactic only — it just confirms *some* file under
 `docs/second-brain/` changed, it cannot tell whether the change is real.
