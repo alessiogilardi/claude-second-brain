@@ -87,6 +87,18 @@ if [ -n "$_sb_extra" ]; then
     _sb_exclude="($_sb_exclude)|($_sb_extra)"
 fi
 
+# Gate timing (SB_GATE, see .second-brain.conf): 'commit' -- the default and
+# the historical behaviour -- rejects here; 'push' downgrades this hook to a
+# non-blocking notice and lets the pre-push hook gate the whole branch
+# instead. An unrecognised value falls back to 'commit': a typo must not
+# silently disable the gate.
+_sb_gate=$(_sb_conf_get "$_sb_conf" SB_GATE)
+[ -n "$_sb_gate" ] || _sb_gate='commit'
+if [ "$_sb_gate" != 'commit' ] && [ "$_sb_gate" != 'push' ]; then
+    echo "  [SECOND BRAIN SYSTEM] unknown SB_GATE='$_sb_gate' in .second-brain.conf; falling back to 'commit'." >&2
+    _sb_gate='commit'
+fi
+
 # Evaluation order: the docs/source split runs on the RAW file list, and the
 # denylist is applied to the source side only -- the same asymmetry
 # SB_INCLUDE_PATTERN already has. A filter that answers "is this a source
@@ -101,7 +113,15 @@ if [ -n "$_sb_staged" ]; then
     if [ -n "$_sb_include" ]; then
         _sb_source=$(printf '%s\n' "$_sb_source" | grep -E "$_sb_include") || true
     fi
-    if [ -n "$_sb_source" ] && [ -z "$_sb_docs" ]; then
+    if [ -n "$_sb_source" ] && [ -z "$_sb_docs" ] && [ "$_sb_gate" = 'push' ]; then
+        echo ""
+        echo "  [SECOND BRAIN SYSTEM] NOTICE (SB_GATE=push)"
+        echo "  Staged source changes with no docs/second-brain/ or CLAUDE.md update."
+        echo "  Not blocking: this repo gates at push time, over the whole branch."
+        echo "  Run the second-brain:update skill before you push."
+        echo ""
+    fi
+    if [ -n "$_sb_source" ] && [ -z "$_sb_docs" ] && [ "$_sb_gate" = 'commit' ]; then
         echo ""
         echo "=================================================================="
         echo "  [SECOND BRAIN SYSTEM] COMMIT REJECTED"
