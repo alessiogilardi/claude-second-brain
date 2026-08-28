@@ -151,6 +151,14 @@ rewritten by every `/second-brain:refresh`. All three read that one file:
   can drift silently. Propose it only when the user's source lives in a
   fixed set of directories, and say what the trade-off is.
 - `SB_EXCLUDE_PATTERN` — replaces the built-in denylist wholesale.
+- `SB_GATE` — **when** the check blocks, not what it matches. `commit`
+  (default) rejects at commit time; `push` makes the pre-commit advisory and
+  moves the block to a pre-push hook that checks the whole branch. Propose
+  `push` when the project's work arrives as multi-commit implementation plans:
+  a per-commit gate there produces doc-touch or documentation of intermediate
+  states. It does **not** reduce what must eventually be documented — it moves
+  the deadline from "this commit" to "before this branch is pushed", so this
+  skill still has to run, just once per branch instead of once per commit.
 
 A repo bootstrapped before v0.4 has no `.second-brain.conf` yet; running
 `/second-brain:bootstrap` or `/second-brain:refresh` creates it without
@@ -161,6 +169,12 @@ Two legitimate reasons to bypass with `git commit --no-verify`:
 - a WIP commit on a private branch that will be squashed later;
 - a doc-only follow-up commit made immediately after the source commit
   it documents.
+
+If a project keeps reaching for `--no-verify` because its commits arrive in
+batches, that is not a bypass problem — it is the wrong gate timing. Propose
+`SB_GATE=push` instead: it makes those commits legal by design rather than by
+exception, and keeps `--no-verify` meaning what it should (a rare, deliberate
+one-off).
 
 Never touch `docs/second-brain/` just to satisfy the hook ("doc-touch") — an edit
 that doesn't correspond to a real change defeats the whole point of this

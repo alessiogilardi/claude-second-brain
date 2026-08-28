@@ -18,6 +18,7 @@ claude-second-brain-skill/
 │   └── payload/                    # files the bootstrap copies into a destination
 │       ├── docs/                       # placeholder doc set -> docs/second-brain/ in the destination
 │       ├── git-pre-commit              # the git pre-commit hook source
+│       ├── git-pre-push                # the git pre-push hook source (blocking gate in SB_GATE=push)
 │       ├── workflows/second-brain.yml  # the CI backstop source
 │       ├── second-brain.conf           # path-filter config (create-only in the destination)
 │       └── claude-md-block.md          # the marker-delimited CLAUDE.md block
@@ -71,17 +72,19 @@ It runs `bootstrap/bootstrap.sh` (you can also call
 2. appends the marker-delimited block (`<!-- BEGIN/END SECOND BRAIN
    SYSTEM -->`) to `CLAUDE.md` if it isn't already present, leaving your
    own content untouched;
-3. installs the git `pre-commit` into a committed, configurable hooks dir
-   (`--hooks-dir`, default `.githooks`) and points `core.hooksPath` at it —
-   unless a foreign `core.hooksPath` (e.g. husky) is already set, in which
-   case it warns and leaves it (pass `--force-hookspath` to override). Your
-   own `pre-commit` is never overwritten: the check is injected as a marker
-   block at the top of it (rejecting first, then falling through to your
-   logic), and a hook already sitting in `.git/hooks` is copied across
-   before `core.hooksPath` is repointed so it isn't shadowed away. The hook
-   is pinned to LF in your `.gitattributes` (one idempotent rule, scoped to
-   its own path) so a Windows checkout can't CRLF-break the `#!/bin/sh`
-   shebang;
+3. installs both the git `pre-commit` and `pre-push` hooks into a committed,
+   configurable hooks dir (`--hooks-dir`, default `.githooks`) and points
+   `core.hooksPath` at it — unless a foreign `core.hooksPath` (e.g. husky) is
+   already set, in which case it warns and leaves it (pass
+   `--force-hookspath` to override). Neither of your own hooks is ever
+   overwritten: the check is injected as a marker block at the top of each
+   (rejecting first, then falling through to your logic), and a hook already
+   sitting in `.git/hooks` is copied across before `core.hooksPath` is
+   repointed so it isn't shadowed away. Both hooks are pinned to LF in your
+   `.gitattributes` (one idempotent rule per path) so a Windows checkout
+   can't CRLF-break the `#!/bin/sh` shebang. The `pre-push` hook is inert
+   unless `SB_GATE=push` is set in `.second-brain.conf` — see *Gate timing*
+   below;
 4. copies the CI workflow to `.github/workflows/second-brain.yml`
    (create-only);
 5. copies `.second-brain.conf` to the repo root (create-only) — the one
@@ -175,8 +178,8 @@ check, not a semantic one: it only verifies that *some* file under `docs/second-
 or `CLAUDE.md` was staged alongside source changes.
 
 Which paths count is configured in **`.second-brain.conf`** at the repo
-root — one file, read by all three enforcement points (the pre-commit, the
-plugin's Stop hook, and the CI workflow). It is create-only: unlike the
+root — one file, read by all four enforcement points (the pre-commit, the
+pre-push, the plugin's Stop hook, and the CI workflow). It is create-only: unlike the
 pre-commit block and the CI workflow, it is **never** rewritten by
 `/second-brain:refresh`, so this is the only place your filters survive a
 plugin update. It ships with every key commented out; leaving it untouched
@@ -197,6 +200,24 @@ documentation is neither documentation nor source for this check, so
 editing `docs/api.md` neither trips the check nor satisfies it. Drop the
 `docs/` entry via `SB_EXCLUDE_PATTERN` if you want every doc change to
 demand a Second Brain update too.
+
+### Gate timing
+
+`SB_GATE` in the same file decides **when** the check blocks, not what it
+matches:
+
+- `commit` (default) — the pre-commit hook rejects a commit that changes
+  source without a matching `docs/second-brain/`/`CLAUDE.md` change, in that
+  same commit. Tightest feedback loop.
+- `push` — the pre-commit hook degrades to a non-blocking notice and the
+  pre-push hook becomes the gate, checking the whole branch range instead of
+  one commit at a time — the same range the CI backstop already checks.
+
+The trade-off: `push` fits multi-commit implementation plans (avoids
+doc-touch or documenting an intermediate state a later commit overturns),
+but source can sit undocumented across several local commits before
+anything blocks. See
+[ADR 0009](./docs/second-brain/adr/0009-configurable-gate-timing.md).
 
 ⚠️ **The allowlist is fail-open.** A denylist errs toward false positives —
 noisy but visible. `SB_INCLUDE_PATTERN` errs the other way: a directory you
