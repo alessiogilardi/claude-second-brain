@@ -83,6 +83,38 @@ itself becomes part of that mirrored surface.
   problem without a new key, but forces a specific git workflow
   (squash-merge) on every consumer of the system, which this project does
   not otherwise mandate.
+- **AD-3 — diff against the merge-base anchor, not the incremental
+  `<remote-sha>..<local-sha>` push range**: `git push` feeds each ref's
+  `<remote-sha>` (the tip the remote already had before this push) to the
+  pre-push hook, so the cheapest range to diff would be
+  `<remote-sha>..<local-sha>` — just what *this* push adds. Rejected in
+  favor of `merge-base(<remote>/<default-branch>, <local-sha>)..<local-sha>`
+  for two reasons: (1) a docs commit pushed *earlier* on the same branch
+  must still satisfy the gate on a later, source-only push — the
+  incremental range would only see the new commits and re-reject a branch
+  that is, taken as a whole, already documented; (2) the local gate must
+  not disagree with what the CI backstop is independently checking, and
+  CI diffs the PR's base against its head (effectively the same
+  merge-base range), not an incremental push-by-push slice. Diffing the
+  same range both places is what lets `push` mode claim "matches the unit
+  the CI backstop already checks" in the Decision above.
+- **AD-4 — fail OPEN (allow the push) when no merge-base anchor can be
+  resolved, instead of fail-closed (block it)**: the anchor resolution
+  (`refs/remotes/<remote>/HEAD`, falling back to `<remote>/main` or
+  `<remote>/master`) can come up empty — the first push of a brand-new
+  repo before `git remote set-head` or any default-branch ref exists, or
+  a push straight to a URL instead of a configured named remote. Fail-open
+  (print a notice, let the push through, rely on the CI backstop) was
+  chosen over fail-closed (block every such push) because the failure
+  here is an *environment* limitation, not evidence that docs are
+  actually out of sync — blocking would punish exactly the workflows
+  (brand-new repos, ad hoc `git push <url>` publishing) that have no way
+  to satisfy a merge-base-anchored check yet, for a condition the CI
+  backstop already covers independently. This is a deliberately different
+  choice from the *conf-value* fallback documented in Consequences below
+  (an unrecognized `SB_GATE` value fails closed to `commit`, the
+  strictest mode) — that decision is about a malformed setting, this one
+  is about an unresolvable git ref; the two must not be conflated.
 
 ## Consequences
 
@@ -99,4 +131,4 @@ itself becomes part of that mirrored surface.
   existing bias for enforcement mistakes to default to *more* blocking,
   not less.
 
-*Last updated: 2026-08-28 — verified against commit `9bb84ec`.*
+*Last updated: 2026-08-28 — verified against commit `8e3279c`.*

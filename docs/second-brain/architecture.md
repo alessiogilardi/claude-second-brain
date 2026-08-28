@@ -14,13 +14,15 @@ projects consume. There is no runtime service here; distribution is
 2. a deterministic **git-bash bootstrap** (`bootstrap/bootstrap.sh`,
    shipped inside the plugin) that scaffolds the files which *must* be
    committed into the consuming repo's working tree — the `docs/second-brain/` set, the
-   `CLAUDE.md` block, the git `pre-commit` hook, and the CI workflow.
+   `CLAUDE.md` block, the git `pre-commit` and `pre-push` hooks, and the
+   CI workflow.
 
 The split is forced by a hard constraint: a plugin cannot write into the
-consuming repo's working tree, yet those four things must be committed
+consuming repo's working tree, yet those five things must be committed
 there to survive fresh clones, teammates who never installed the plugin,
-and CI runners (see ADR 0002). Everything a plugin *can* serve read-only
-lives in the plugin; everything that must be committed is bootstrapped.
+and CI runners (see ADR 0002, amended by ADR 0009). Everything a plugin
+*can* serve read-only lives in the plugin; everything that must be
+committed is bootstrapped.
 
 ## Main components
 
@@ -34,26 +36,34 @@ lives in the plugin; everything that must be committed is bootstrapped.
   navigation map at `docs/README.md`, nothing at
   `docs/second-brain/README.md`) gets the docs scaffold skipped and the
   `git mv` printed instead, so placeholders are never seeded next to a
-  populated legacy set — the move itself stays the user's (ADR 0008). Installs the git pre-commit into a committed,
-  configurable hooks dir (`--hooks-dir`, default `.githooks`) and points
-  `core.hooksPath` at it (only when unset-and-ours or already ours — never
-  clobbers husky/other), and pins that hook to LF in the destination's
-  `.gitattributes` (idempotent, scoped to its own path) so a Windows
-  checkout can't CRLF-break the `#!/bin/sh` shebang. It never overwrites a
-  user's pre-commit: our check
+  populated legacy set — the move itself stays the user's (ADR 0008).
+  Installs BOTH the git `pre-commit` and `pre-push` hooks into a
+  committed, configurable hooks dir (`--hooks-dir`, default `.githooks`)
+  and points `core.hooksPath` at it (only when unset-and-ours or already
+  ours — never clobbers husky/other), through a single hook-name-
+  parameterized helper (`install_or_inject_hook "<name>"` /
+  `refresh_hook "<name>"`, called once per hook — see "Marker-delimited
+  block merge" in patterns.md), and pins both hooks to LF in the
+  destination's `.gitattributes` (`ensure_gitattributes_lf`, idempotent,
+  scoped to `<hooks-dir>/pre-commit` and `<hooks-dir>/pre-push`) so a
+  Windows checkout can't CRLF-break the `#!/bin/sh` shebang. It never
+  overwrites a user's hook: our check
   is a marker-delimited block injected at the top of an existing hook
   (running first, rejecting only, then falling through to the host's own
   logic); a foreign `.git/hooks/pre-commit` is copied into the hooks dir
-  before the repoint so it isn't lost, and a pre-0.3 Second Brain hook is
-  replaced wholesale. The dir is resolved with precedence explicit
-  `--hooks-dir` > an existing Second Brain `core.hooksPath` (so pre-0.3
-  installs on `.claude/hooks` stay put and refresh writes there) >
-  `.githooks`. `--refresh-system` is the only overwrite path for our own
-  content, scoped to the pre-commit block, the CI workflow, and the
-  `CLAUDE.md` block *between its markers* (see ADR 0006).
+  before the repoint so it isn't lost, and a pre-0.3 Second Brain
+  pre-commit hook is replaced wholesale (pre-push never had a pre-0.3
+  legacy format, since it's new). The dir is resolved with precedence
+  explicit `--hooks-dir` > an existing Second Brain `core.hooksPath` (so
+  pre-0.3 installs on `.claude/hooks` stay put and refresh writes there,
+  detected via the presence of a marked `pre-commit` — pre-push is
+  optional and not used for detection) > `.githooks`. `--refresh-system`
+  is the only overwrite path for our own content, scoped to both hook
+  blocks, the CI workflow, and the `CLAUDE.md` block *between its
+  markers* (see ADR 0006).
 - **`bootstrap/payload/`** — the source content the bootstrap copies:
   `docs/` (the placeholder set, copied to `docs/second-brain/` in the
-  destination) + `adr/template.md`, `git-pre-commit`,
+  destination) + `adr/template.md`, `git-pre-commit`, `git-pre-push`,
   `workflows/second-brain.yml`, `claude-md-block.md`, and
   `second-brain.conf`.
 - **`.second-brain.conf`** (in the destination) — the single place a
@@ -107,12 +117,16 @@ lives in the plugin; everything that must be committed is bootstrapped.
   `.claude-plugin/plugin.json`'s `version`, and rejects a malformed or
   non-increasing version (see ADR 0005).
 
-The `pre-commit` hook and the CI workflow live in `bootstrap/payload/`
-(bootstrapped into the consuming repo), while `session-reminder.sh` lives
-in the plugin — so the triple-mirrored default patterns and conf reader
-now span the plugin/repo boundary (see ADR 0002); the per-project filter
-values do not, since all three read the destination's single
-`.second-brain.conf` (ADR 0007).
+The `pre-commit` hook, the `pre-push` hook, and the CI workflow live in
+`bootstrap/payload/` (bootstrapped into the consuming repo), while
+`session-reminder.sh` lives in the plugin — so the now-four-way-mirrored
+default patterns and conf reader (`pre-commit`, `pre-push`,
+`session-reminder.sh`, CI) span the plugin/repo boundary (see ADR 0002,
+amended by ADR 0009); the per-project filter values do not, since all
+four read the destination's single `.second-brain.conf` (ADR 0007). The
+gate's *unit* of enforcement — one commit, or the whole branch — is
+selectable per repo via `.second-brain.conf`'s `SB_GATE` key (`commit`
+default / `push`), read by both git hooks (ADR 0009).
 
 ## Main flows
 
@@ -124,22 +138,28 @@ values do not, since all three read the destination's single
    SessionStart hook reminds the model to bootstrap.
 2. **Bootstrap the repo** — run `/second-brain:bootstrap` (which runs
    `bootstrap.sh`). Scaffolds `docs/second-brain/` (create-only), appends the `CLAUDE.md`
-   block, installs the git `pre-commit` into the committed hooks dir
-   (`.githooks` by default) and points `core.hooksPath` at it, and copies
-   the CI workflow and `.second-brain.conf`. Safe to re-run (everything
-   reports `[SKIP]`).
+   block, installs BOTH the git `pre-commit` and `pre-push` hooks into
+   the committed hooks dir (`.githooks` by default) and points
+   `core.hooksPath` at it, and copies the CI workflow and
+   `.second-brain.conf` (`SB_GATE=commit` by default, so the freshly
+   installed `pre-push` hook is inert until the repo opts into
+   `SB_GATE=push`). Safe to re-run (everything reports `[SKIP]`).
 3. **Onboard** (once per destination) — run the `second-brain:onboard`
    skill: replaces every `> Placeholder` marker under `docs/second-brain/` with real
    content verified against that destination's code.
-4. **Ongoing enforcement** — a source-changing commit without a matching
-   `docs/second-brain/`/`CLAUDE.md` change is rejected by `pre-commit` → the
-   `second-brain:update` skill runs, docs are staged with the code, commit
-   retried. The Stop hook and the CI workflow catch what the local,
-   non-cloned pre-commit hook misses.
+4. **Ongoing enforcement** — with the default `SB_GATE=commit`, a
+   source-changing commit without a matching `docs/second-brain/`/`CLAUDE.md`
+   change is rejected by `pre-commit` → the `second-brain:update` skill
+   runs, docs are staged with the code, commit retried. With
+   `SB_GATE=push`, `pre-commit` only prints a non-blocking notice and the
+   `pre-push` hook rejects instead, over the whole branch range since the
+   remote's default branch (ADR 0009). Either way, the Stop hook and the
+   CI workflow catch what the local, non-cloned git hooks miss.
 5. **Refresh system files** — after a plugin update ships new hook/CI/block
    content, `/second-brain:refresh` (`--refresh-system`) overwrites only
-   those three committed files; `docs/second-brain/`, `.second-brain.conf` and user prose
-   stay untouched.
+   those four committed files (`pre-commit`, `pre-push`, the CI workflow,
+   and the CLAUDE.md block between its markers); `docs/second-brain/`,
+   `.second-brain.conf` and user prose stay untouched.
 
 ## Relevant architectural decisions
 
@@ -164,9 +184,11 @@ values do not, since all three read the destination's single
   bootstrap, since Claude Code has no post-install lifecycle event.
 - [ADR 0003](./adr/0003-hybrid-plugin-plus-bootstrap-distribution.md) —
   hybrid plugin + deterministic bootstrap distribution (supersedes 0001).
-- [ADR 0002](./adr/0002-triple-mirrored-enforcement.md) — triple-mirrored
-  `EXCLUDE_PATTERN`, now spanning the plugin/repo boundary.
+- [ADR 0002](./adr/0002-triple-mirrored-enforcement.md) — mirrored
+  `EXCLUDE_PATTERN`, spanning the plugin/repo boundary; amended by ADR
+  0009 to a four-way mirror (`pre-push` added) and mode-dependent fast
+  feedback.
 - [ADR 0001](./adr/0001-manifest-gated-sync-for-system-owned-files.md) —
   the previous SHA-256-manifest install strategy, **superseded by 0003**.
 
-*Last updated: 2026-08-28 — verified against commit `9bb84ec`.*
+*Last updated: 2026-08-28 — verified against commit `8e3279c`.*

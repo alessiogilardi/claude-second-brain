@@ -80,4 +80,24 @@ shared by construction, not by convention:
   destination's single `.second-brain.conf` (ADR 0007), so they cannot drift
   between the three points and are never rewritten by a refresh.
 
-*Last updated: 2026-07-31 — verified against commit `81606ed`.*
+### Amended by ADR 0009
+
+[ADR 0009](./0009-configurable-gate-timing.md) adds a fourth mirrored
+implementation, `bootstrap/payload/git-pre-push`, and changes one property
+of this ADR's Consequences that no longer holds unconditionally:
+
+- The mirror is **four files**, not three:
+  `bootstrap/payload/git-pre-commit`, `bootstrap/payload/git-pre-push`,
+  `hooks/session-reminder.sh`, and
+  `bootstrap/payload/workflows/second-brain.yml`. The maintenance burden
+  above ("must be manually kept in sync") now spans all four.
+- "Fast local feedback at commit time" (this ADR's stated benefit of the
+  local pre-commit hook) is **mode-dependent**, not a given: it holds only
+  under the default `SB_GATE=commit`. Under `SB_GATE=push`, the
+  pre-commit hook downgrades to a non-blocking notice and the actual
+  blocking check moves to `pre-push`, evaluating the whole branch range
+  instead of one commit — trading that fast per-commit feedback for a
+  coarser, branch-wide check. See ADR 0009 for the rationale and
+  trade-offs of that mode.
+
+*Last updated: 2026-08-28 — verified against commit `8e3279c`.*
