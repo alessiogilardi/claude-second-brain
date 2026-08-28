@@ -456,9 +456,9 @@ copy_if_absent "$PAYLOAD/second-brain.conf" ".second-brain.conf"
 #    CLAUDE.md block between its markers. docs/second-brain/,
 #    .second-brain.conf and user prose untouched.
 
-# Refresh one of our hooks in place: overwrite the marker-delimited block if
-# present, install if missing, upgrade a pre-0.3 marker-less hook wholesale,
-# or inject the block into a foreign hook that has since appeared.
+# Refresh one of our hooks in place: rewrite the marker-delimited block from
+# the current payload. Install, pre-0.3 upgrade and injection into a foreign
+# hook all happen earlier, in install_or_inject_hook (step 3).
 refresh_hook() {
     local name="$1" markers begin end payload hook
     markers="$(hook_markers "$name")"
@@ -466,19 +466,19 @@ refresh_hook() {
     end="${markers##*$'\t'}"
     payload="$PAYLOAD/git-$name"
     hook="$HOOKS_DIR/$name"
-    if [ ! -f "$hook" ]; then
-        mkdir -p "$HOOKS_DIR"
-        cp "$payload" "$hook"
-        echo "  [REFRESH] $hook (installed; was missing)"
-    elif hook_is_ours "$hook" "$begin"; then
-        refresh_hook_block "$hook" "$payload" "$begin" "$end"
-        echo "  [REFRESH] $hook (block between markers)"
-    elif hook_is_legacy_ours "$hook" "$begin"; then
-        cp "$payload" "$hook"
-        echo "  [REFRESH] $hook (upgraded pre-0.3 Second Brain hook)"
-    else
-        inject_hook_block "$hook" "$payload" "$begin" "$end"
+    # Step 3 (install_or_inject_hook) runs unconditionally, and before this,
+    # in the same invocation -- so by the time a refresh reaches here the hook
+    # exists and carries our markers in every case: a missing hook was just
+    # created, a pre-0.3 marker-less one replaced wholesale, a foreign one
+    # injected. Only the block rewrite is reachable. Anything else means the
+    # script's own step order was broken, so fail loudly rather than write a
+    # malformed hook.
+    if [ ! -f "$hook" ] || ! hook_is_ours "$hook" "$begin"; then
+        echo "  [ERROR] $hook is missing or carries no SECOND BRAIN block at refresh time (did the install step run?)" >&2
+        exit 1
     fi
+    refresh_hook_block "$hook" "$payload" "$begin" "$end"
+    echo "  [REFRESH] $hook (block between markers)"
     chmod +x "$hook" 2>/dev/null || true
 }
 
