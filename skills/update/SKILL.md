@@ -130,8 +130,9 @@ or as an end-of-session check:
 ## Hook exclusions and legitimate bypasses
 
 The pre-commit hook (installed in the committed hooks dir,
-`.githooks/pre-commit` by default) and its two mirrors — the Stop hook (the
-second-brain plugin's `session-reminder.sh`) and the CI backstop
+`.githooks/pre-commit` by default) and its three mirrors — the pre-push hook
+(`.githooks/pre-push`, the blocking gate under `SB_GATE=push`), the Stop hook
+(the second-brain plugin's `session-reminder.sh`) and the CI backstop
 (`.github/workflows/second-brain.yml`) — all decide whether "source
 changed" the same way: they skip lockfiles (`*.lock`,
 `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`,
@@ -140,8 +141,8 @@ changed" the same way: they skip lockfiles (`*.lock`,
 depth.
 
 If a project needs a different set, change it in **`.second-brain.conf`** at
-the repo root — never by editing the three files, whose patterns are
-rewritten by every `/second-brain:refresh`. All three read that one file:
+the repo root — never by editing the four files, whose patterns are
+rewritten by every `/second-brain:refresh`. All four read that one file:
 
 - `SB_EXCLUDE_EXTRA` — added to the default denylist. This is the right
   answer to a recurring false positive (generated/vendored paths, a

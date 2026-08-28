@@ -439,7 +439,7 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
         # Another hook manager (husky, lefthook, ...) owns core.hooksPath.
         # Our hook now sits in $HOOKS_DIR but git won't read it until this
         # is repointed; don't clobber their setup silently.
-        echo "  [WARN] core.hooksPath is '$current' (another hook manager?); left untouched, so $HOOKS_DIR/pre-commit is inert (re-run with --force-hookspath to override)"
+        echo "  [WARN] core.hooksPath is '$current' (another hook manager?); left untouched, so the hooks in $HOOKS_DIR are inert (re-run with --force-hookspath to override)"
     fi
 else
     echo "  [GIT] no git repository here; skipping hook wiring"
