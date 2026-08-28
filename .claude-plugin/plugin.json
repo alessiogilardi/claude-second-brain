@@ -1,6 +1,6 @@
 {
   "name": "second-brain",
-  "version": "1.0.0",
-  "description": "Docs-in-sync system: skills, a read-only docs reader agent, an end-of-session Stop hook, and a SessionStart bootstrap nudge, plus a deterministic git-bash bootstrap that scaffolds the repo-side files (docs/second-brain/, CLAUDE.md block, git pre-commit, CI) into a destination project.",
+  "version": "1.1.0",
+  "description": "Docs-in-sync system: skills, a read-only docs reader agent, an end-of-session Stop hook, and a SessionStart bootstrap nudge, plus a deterministic git-bash bootstrap that scaffolds the repo-side files (docs/second-brain/, CLAUDE.md block, git pre-commit and pre-push, CI) into a destination project. SB_GATE selects whether the blocking check runs at commit time or over the whole branch at push time.",
   "author": { "name": "Alessio Gilardi" }
 }
