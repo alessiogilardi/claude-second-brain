@@ -5,7 +5,10 @@
 # Scaffolds the files that MUST live inside a destination git repository
 # (committed, so they survive fresh clones / teammates who never installed
 # / CI): the docs/second-brain/ set, the CLAUDE.md marker block, the git
-# pre-commit hook (+ core.hooksPath wiring), and the CI workflow.
+# pre-commit and pre-push hooks (+ core.hooksPath wiring), and the CI
+# workflow. The pre-push hook is inert unless SB_GATE=push is set in
+# .second-brain.conf, so installing it into an existing project changes
+# nothing until that switch is flipped.
 #
 # The doc set lives in its own subdirectory of docs/ so it never collides
 # with the destination's own documentation. A repo bootstrapped before that
@@ -32,8 +35,8 @@
 # shadowed are reported.
 #
 # The only overwrite path is --refresh-system, and it is scoped to exactly
-# the git pre-commit hook, the CI workflow, and the CLAUDE.md block BETWEEN
-# its markers -- docs/second-brain/, .second-brain.conf, and any user prose
+# the git pre-commit and pre-push hooks, the CI workflow, and the CLAUDE.md
+# block BETWEEN its markers -- docs/second-brain/, .second-brain.conf, and any user prose
 # outside the markers are never touched. .second-brain.conf is where a
 # destination tunes the path filters (SB_INCLUDE_PATTERN / SB_EXCLUDE_EXTRA /
 # SB_EXCLUDE_PATTERN) precisely because it is create-only: filters edited
@@ -279,7 +282,7 @@ warn_shadowed_git_hooks() {
     for f in .git/hooks/*; do
         [ -f "$f" ] || continue
         name="$(basename "$f")"
-        case "$name" in *.sample | pre-commit) continue ;; esac
+        case "$name" in *.sample | pre-commit | pre-push) continue ;; esac
         grep -qF "SECOND BRAIN SYSTEM" "$f" 2>/dev/null && continue
         echo "  [WARN] .git/hooks/$name will be shadowed by core.hooksPath=$HOOKS_DIR; move it into $HOOKS_DIR to keep it active"
     done
@@ -320,19 +323,27 @@ normalize_gitattributes_entry() {
     echo "  [FIX] .gitattributes (dead absolute pre-commit pin rewritten to $entry)"
 }
 
+# normalize_gitattributes_entry's self-heal regex targets `*/pre-commit …
+# eol=lf` specifically -- a dead *absolute* pin can only exist for
+# pre-commit, since pre-push never shipped before this multi-hook change (so
+# no pre-0.3.2 install ever wrote an absolute pin for it). The regex is left
+# pre-commit-only rather than generalised.
 ensure_gitattributes_lf() {
-    local entry="$HOOKS_DIR/pre-commit text eol=lf"
-    normalize_gitattributes_entry "$entry"
-    if [ -f .gitattributes ] && grep -qF "$entry" .gitattributes; then
-        echo "  [SKIP] .gitattributes ($HOOKS_DIR/pre-commit eol=lf present)"
-        return
-    fi
-    {
-        [ -s .gitattributes ] && printf '\n'
-        printf '%s\n' "$GITATTR_COMMENT"
-        printf '%s\n' "$entry"
-    } >> .gitattributes
-    echo "  [CREATE] .gitattributes ($HOOKS_DIR/pre-commit eol=lf)"
+    local name entry
+    for name in pre-commit pre-push; do
+        entry="$HOOKS_DIR/$name text eol=lf"
+        normalize_gitattributes_entry "$entry"
+        if [ -f .gitattributes ] && grep -qF "$entry" .gitattributes; then
+            echo "  [SKIP] .gitattributes ($HOOKS_DIR/$name eol=lf present)"
+        else
+            {
+                [ -s .gitattributes ] && printf '\n'
+                printf '%s\n' "$GITATTR_COMMENT"
+                printf '%s\n' "$entry"
+            } >> .gitattributes
+            echo "  [CREATE] .gitattributes ($HOOKS_DIR/$name eol=lf)"
+        fi
+    done
 }
 
 # True if this destination carries a pre-1.0 doc set directly under docs/:
@@ -400,6 +411,7 @@ fi
 HOOKS_DIR="$(resolve_hooks_dir)"
 echo "  [GIT] hooks dir: $HOOKS_DIR"
 install_or_inject_hook "pre-commit"
+install_or_inject_hook "pre-push"
 
 if git rev-parse --git-dir >/dev/null 2>&1; then
     ensure_gitattributes_lf
@@ -475,6 +487,7 @@ if [ "$REFRESH" = 1 ]; then
     echo "  Refreshing system files ..."
 
     refresh_hook "pre-commit"
+    refresh_hook "pre-push"
 
     mkdir -p ".github/workflows"
     cp "$PAYLOAD/workflows/second-brain.yml" ".github/workflows/second-brain.yml"

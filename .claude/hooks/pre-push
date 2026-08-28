@@ -1,0 +1,164 @@
+#!/bin/sh
+#
+# [SECOND BRAIN SYSTEM] pre-push hook
+#
+# The blocking half of SB_GATE=push. It answers the same question as the
+# pre-commit hook -- "source changed without a matching docs/second-brain/ or
+# CLAUDE.md change?" -- but over the whole branch instead of one commit:
+# merge-base(<remote>/<default branch>, <pushed sha>)..<pushed sha>, which is
+# exactly the range the CI backstop checks. That is the point of the mode: the
+# unit of enforcement matches the unit of truth (a completed change), so a
+# multi-commit plan is not forced to document intermediate states.
+#
+# Inert unless SB_GATE=push in the repo's .second-brain.conf. With the default
+# SB_GATE=commit this hook exits 0 immediately and the pre-commit rejects
+# instead, so installing it changes nothing for an existing project.
+#
+# The merge-base anchor, not the incremental <remote sha>..<local sha> range:
+# a docs update pushed earlier on the same branch must still count, and the
+# local gate must not disagree with CI about what it is checking. When no
+# anchor can be resolved (first push of a brand-new repo, or a push straight to
+# a URL rather than a named remote) the hook prints a notice and allows the
+# push -- the CI backstop still applies.
+#
+# The check lives in the marker-delimited block below, same contract as the
+# pre-commit: on a fresh repo the whole file is installed as the pre-push; if
+# the destination already has one, bootstrap.sh injects ONLY the block at the
+# top. The block exits non-zero ONLY to reject, so a host hook's own logic
+# still runs on success. `bootstrap.sh --refresh-system` rewrites just the
+# content between the markers.
+#
+# TUNING: do NOT edit the patterns below -- they are rewritten by every
+# --refresh-system. Project-specific filters (SB_INCLUDE_PATTERN,
+# SB_EXCLUDE_EXTRA, SB_EXCLUDE_PATTERN) and the gate timing (SB_GATE) live in
+# the committed .second-brain.conf at the repo root.
+#
+# Keep the default patterns, the evaluation order and the .second-brain.conf
+# reader byte-identical with bootstrap/payload/git-pre-commit,
+# hooks/session-reminder.sh and bootstrap/payload/workflows/second-brain.yml
+# (ADR 0002, amended by ADR 0009). Variables and functions are _sb_-prefixed,
+# and the reader is unset at the end, so the block never clobbers a host hook's
+# own names when injected.
+
+# >>> BEGIN SECOND BRAIN SYSTEM pre-push >>>
+_sb_default_exclude='^(\.github/|docs/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$|\.second-brain\.conf$)|(^|/)tests?/'
+_sb_docs_pattern='^docs/second-brain/|^CLAUDE\.md$'
+
+# Read KEY from the .second-brain.conf-style file $1. Last assignment wins;
+# surrounding single/double quotes and trailing blanks are stripped; a missing
+# file or key yields the empty string (caller falls back to the default).
+_sb_conf_get() {
+    [ -f "$1" ] || return 0
+    sed -n "s/^[[:space:]]*$2[[:space:]]*=[[:space:]]*//p" "$1" |
+        sed -e 's/[[:space:]]*$//' -e 's/^\(['"'"'"]\)\(.*\)\1$/\2/' |
+        tail -n 1
+}
+
+_sb_root=$(git rev-parse --show-toplevel 2>/dev/null) || _sb_root="."
+[ -n "$_sb_root" ] || _sb_root="."
+_sb_conf="$_sb_root/.second-brain.conf"
+
+# Inert unless this repo opted into push-time gating.
+_sb_gate=$(_sb_conf_get "$_sb_conf" SB_GATE)
+if [ "$_sb_gate" != 'push' ]; then
+    unset -f _sb_conf_get 2>/dev/null || true
+    exit 0
+fi
+
+_sb_include=$(_sb_conf_get "$_sb_conf" SB_INCLUDE_PATTERN)
+_sb_exclude=$(_sb_conf_get "$_sb_conf" SB_EXCLUDE_PATTERN)
+_sb_extra=$(_sb_conf_get "$_sb_conf" SB_EXCLUDE_EXTRA)
+[ -n "$_sb_exclude" ] || _sb_exclude="$_sb_default_exclude"
+if [ -n "$_sb_extra" ]; then
+    _sb_exclude="($_sb_exclude)|($_sb_extra)"
+fi
+
+_sb_remote="${1:-origin}"
+_sb_zero='0000000000000000000000000000000000000000'
+_sb_rejected=0
+
+# The anchor the branch range is measured from: the remote's default branch.
+# refs/remotes/<remote>/HEAD only exists when someone ran `git remote set-head`,
+# so fall back to the conventional names before giving up.
+_sb_anchor=$(git symbolic-ref --quiet "refs/remotes/$_sb_remote/HEAD" 2>/dev/null) || _sb_anchor=''
+if [ -z "$_sb_anchor" ]; then
+    for _sb_candidate in main master; do
+        if git rev-parse --verify --quiet "refs/remotes/$_sb_remote/$_sb_candidate" >/dev/null 2>&1; then
+            _sb_anchor="refs/remotes/$_sb_remote/$_sb_candidate"
+            break
+        fi
+    done
+fi
+
+# git feeds "<local ref> <local sha> <remote ref> <remote sha>" per pushed ref
+# on stdin. Read it all first, then loop over a here-doc: a pipe would run the
+# loop in a subshell and lose _sb_rejected.
+_sb_refs=$(cat)
+
+while read -r _sb_local_ref _sb_local_sha _sb_remote_ref _sb_remote_sha; do
+    # Skip the empty line a here-doc adds, and branch deletions (all-zero local).
+    if [ -n "$_sb_local_sha" ] && [ "$_sb_local_sha" != "$_sb_zero" ]; then
+        _sb_base=''
+        if [ -n "$_sb_anchor" ]; then
+            _sb_base=$(git merge-base "$_sb_anchor" "$_sb_local_sha" 2>/dev/null) || _sb_base=''
+        fi
+        # Pushing the anchor itself (or anything the anchor already contains):
+        # the merge-base IS the tip, so there is no branch range -- fall back to
+        # what this push actually adds.
+        if [ -z "$_sb_base" ] || [ "$_sb_base" = "$_sb_local_sha" ]; then
+            _sb_base=''
+            if [ -n "$_sb_remote_sha" ] && [ "$_sb_remote_sha" != "$_sb_zero" ]; then
+                _sb_base="$_sb_remote_sha"
+            fi
+        fi
+
+        if [ -z "$_sb_base" ]; then
+            echo "  [SECOND BRAIN SYSTEM] no comparison base for $_sb_local_ref; skipping the push gate (the CI backstop still applies)."
+        else
+            _sb_changed=$(git diff --name-only "$_sb_base" "$_sb_local_sha" 2>/dev/null)
+            if [ -n "$_sb_changed" ]; then
+                # Evaluation order: the docs/source split runs on the RAW file
+                # list, and the denylist is applied to the source side only --
+                # the same asymmetry SB_INCLUDE_PATTERN already has. A filter
+                # that answers "is this a source change?" must not be able to
+                # remove a file from the "documentation changed" set; that is
+                # what lets the broad `docs/` entry in the denylist coexist with
+                # docs/second-brain/ (ADR 0008, amending ADR 0007).
+                _sb_docs=$(printf '%s\n' "$_sb_changed" | grep -E "$_sb_docs_pattern") || true
+                _sb_source=$(printf '%s\n' "$_sb_changed" | grep -vE "$_sb_docs_pattern") || true
+                _sb_source=$(printf '%s\n' "$_sb_source" | grep -vE "$_sb_exclude") || true
+                if [ -n "$_sb_include" ]; then
+                    _sb_source=$(printf '%s\n' "$_sb_source" | grep -E "$_sb_include") || true
+                fi
+                if [ -n "$_sb_source" ] && [ -z "$_sb_docs" ]; then
+                    echo ""
+                    echo "=================================================================="
+                    echo "  [SECOND BRAIN SYSTEM] PUSH REJECTED"
+                    echo "=================================================================="
+                    echo ""
+                    echo "  Ref:   $_sb_local_ref"
+                    echo "  Range: $_sb_base..$_sb_local_sha"
+                    echo ""
+                    echo "  This branch changes source code, but nothing under"
+                    echo "  docs/second-brain/ and not CLAUDE.md."
+                    echo ""
+                    echo "  Claude, run the second-brain:update skill, commit the"
+                    echo "  result, then push again -- do not hand-edit"
+                    echo "  docs/second-brain/ just to pass this check, that skips"
+                    echo "  the skill's routing/footer/ADR steps."
+                    echo "  If this is a false positive, add the path to"
+                    echo "  SB_EXCLUDE_EXTRA in .second-brain.conf."
+                    echo ""
+                    echo "=================================================================="
+                    _sb_rejected=1
+                fi
+            fi
+        fi
+    fi
+done <<SB_REFS
+$_sb_refs
+SB_REFS
+
+unset -f _sb_conf_get 2>/dev/null || true
+[ "$_sb_rejected" = 0 ] || exit 1
+# <<< END SECOND BRAIN SYSTEM pre-push <<<
