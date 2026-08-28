@@ -6,8 +6,9 @@
 # bootstrap, or plain --no-verify). This workflow re-applies the same
 # syntactic check to the PR diff so a missing/bypassed local hook doesn't
 # mean zero enforcement. Keep the default patterns, the evaluation order and
-# the .second-brain.conf reader mirrored with the bootstrapped git pre-commit
-# and the second-brain plugin's session-reminder.sh.
+# the .second-brain.conf reader mirrored with the bootstrapped git pre-commit,
+# bootstrap/payload/git-pre-push and the second-brain plugin's
+# session-reminder.sh.
 #
 # The Second Brain lives under docs/second-brain/ so it never collides with
 # the project's own documentation; everything else under docs/ is neither
@@ -19,6 +20,11 @@
 # untrusted input, and sourcing it would be arbitrary code execution on the
 # runner. A malicious PR can still widen the filters to dodge this check --
 # treat .second-brain.conf as a review-worthy file, like the workflow itself.
+#
+# This workflow ignores SB_GATE. It already checks the full PR diff, which is
+# exactly what SB_GATE=push checks locally -- so in 'push' mode CI and the
+# pre-push hook answer the same question over the same range, and in 'commit'
+# mode CI remains the branch-level backstop it has always been.
 name: Second Brain docs check
 
 on:
