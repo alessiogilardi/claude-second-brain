@@ -21,9 +21,14 @@
 # (added to the default denylist), SB_EXCLUDE_PATTERN (replaces it). All
 # three are applied to the source side only. Keep the defaults, the
 # evaluation order and the reader byte-identical with
-# bootstrap/payload/git-pre-commit and
+# bootstrap/payload/git-pre-commit, bootstrap/payload/git-pre-push and
 # bootstrap/payload/workflows/second-brain.yml (ADR 0002). No external
 # dependencies: bash + git only (no uv, no python, no jq).
+#
+# This hook deliberately does NOT read SB_GATE: it is advisory (it never
+# rejects anything) and it answers a different question -- uncommitted drift at
+# session end, before anything is staged. Its behaviour is identical in both
+# gate modes.
 set -uo pipefail
 
 DEFAULT_EXCLUDE_PATTERN='^(\.github/|docs/|.*\.lock$|package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$|poetry\.lock$|uv\.lock$|Cargo\.lock$|Gemfile\.lock$|\.claude/|\.githooks/|\.gitattributes$|\.second-brain\.conf$)|(^|/)tests?/'
