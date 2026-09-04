@@ -2,7 +2,7 @@
 
 A Claude Code **plugin** that exports the **"Second Brain"** documentation
 system to other projects: a `docs/second-brain/` structure kept in sync with the code
-via two skills, a git `pre-commit` hook, and a CI backstop. The plugin
+via three skills, a git `pre-commit` hook, and a CI backstop. The plugin
 carries the runtime; a deterministic git-bash **bootstrap** scaffolds the
 files that must be committed into the consuming repo.
 
@@ -30,7 +30,12 @@ claude-second-brain-skill/
 │   ├── bootstrap.md                 # /second-brain:bootstrap -> bootstrap.sh
 │   └── refresh.md                   # /second-brain:refresh   -> bootstrap.sh --refresh-system
 ├── skills/
-│   ├── update/SKILL.md              # second-brain:update  -- keeps docs/second-brain/ in sync with the code
+│   ├── update/
+│   │   ├── SKILL.md                 # second-brain:update  -- keeps docs/second-brain/ in sync with the code
+│   │   └── references/              # loaded on demand, not every run
+│   │       ├── writing-guides.md        # per-file guidance + editorial rules + footer edge cases
+│   │       └── gate-config.md           # exclusions, SB_GATE timing, legitimate bypasses
+│   ├── adr/SKILL.md                 # second-brain:adr     -- owns docs/second-brain/adr/ (numbering, proposal mode)
 │   └── onboard/SKILL.md             # second-brain:onboard -- bootstraps docs/second-brain/ from placeholders (once)
 ├── agents/
 │   └── second-brain-reader.md      # read-only docs/second-brain/ retrieval subagent

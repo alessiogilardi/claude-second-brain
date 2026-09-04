@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 <!-- BEGIN SECOND BRAIN SYSTEM (managed by the second-brain plugin: do not edit this block by hand, edit bootstrap/payload/claude-md-block.md and re-run the bootstrap with --refresh-system) -->
 ## Skill: Second Brain
 **Source of Truth:** `docs/second-brain/` (architecture, ADRs, state).
-**Full Policy:** the `second-brain:update` skill.
+**Full Policy:** the `second-brain:update` skill (decisions: `second-brain:adr`).
 
 @docs/second-brain/README.md
 
@@ -21,9 +21,13 @@ been decided.
 ### Triggers (IMMEDIATE ACTION REQUIRED)
 Run `skill: "second-brain:update"` after:
 * Schema changes or structural refactors.
-* New architectural decisions or recurring patterns.
+* New recurring patterns or conventions in the code.
 * Testing-strategy changes.
 * `[SECOND BRAIN SYSTEM] COMMIT REJECTED` pre-commit error.
+
+Run `skill: "second-brain:adr"` when the fact is a **decision** with real
+alternatives and trade-offs — it owns `docs/second-brain/adr/` (numbering,
+proposal mode, superseding). A change often needs both skills.
 
 **Exception:** IF `docs/second-brain/*.md` contains `> Placeholder —`, run
 `second-brain:onboard` instead.
@@ -38,8 +42,8 @@ hook checks the whole branch diff.) If rejected: 1. Run skill -> 2. Stage docs
 The check is syntactic only — it just confirms *some* file under
 `docs/second-brain/` changed, it cannot tell whether the change is real.
 Always go through `skill: "second-brain:update"`, which routes the fact to
-the right file, proposes an ADR when warranted, and refreshes the freshness
-footer. A hand-edit that skips these steps passes the check but leaves the
+the right file, hands a decision to `second-brain:adr`, and refreshes the
+freshness footer. A hand-edit that skips these steps passes the check but leaves the
 docs wrong or stale, defeating the whole point of the system.
 <!-- END SECOND BRAIN SYSTEM -->
 
