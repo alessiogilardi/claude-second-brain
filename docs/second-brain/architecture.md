@@ -9,8 +9,9 @@ projects consume. There is no runtime service here; distribution is
 
 1. a native **Claude Code plugin** (marketplace-distributed, cached
    read-only in `~/.claude/plugins/`, external to the consuming repo) that
-   carries the runtime: the two skills, the reader agent, the
-   end-of-session Stop hook, and a session-start bootstrap nudge;
+   carries the runtime: the three skills (with their `references/`), the
+   reader agent, the end-of-session Stop hook, and a session-start
+   bootstrap nudge;
 2. a deterministic **git-bash bootstrap** (`bootstrap/bootstrap.sh`,
    shipped inside the plugin) that scaffolds the files which *must* be
    committed into the consuming repo's working tree — the `docs/second-brain/` set, the
@@ -101,10 +102,19 @@ committed is bootstrapped.
   `bootstrap.sh` (the second with `--refresh-system`). The command
   executes the script deterministically; the model only reports its
   output.
-- **`skills/{update,onboard}/SKILL.md`** — the two skills that read/write
-  `docs/second-brain/`: `second-brain:onboard` bootstraps a fresh destination's
-  placeholders once; `second-brain:update` keeps `docs/second-brain/` in sync
-  afterward.
+- **`skills/{update,adr,onboard}/SKILL.md`** — the three skills that
+  read/write `docs/second-brain/`, split by lifecycle phase rather than by
+  target file (ADR 0010): `second-brain:onboard` bootstraps a fresh
+  destination's placeholders once; `second-brain:update` keeps the status
+  documents in sync afterward and is the entry point the hooks name;
+  `second-brain:adr` owns `docs/second-brain/adr/` (numbering, proposal
+  mode, superseding). `update` and `adr` point at each other, so a change
+  that is both a state change and a decision is recovered from either
+  entry point. `skills/update/references/` holds the depth loaded on
+  demand — `writing-guides.md` (per-file guidance, editorial rules,
+  freshness-footer edge cases) and `gate-config.md` (exclusions, `SB_GATE`
+  timing, legitimate bypasses) — so a routine run never pays for material
+  it doesn't need.
 - **`agents/second-brain-reader.md`** — a read-only subagent that answers
   questions from `docs/second-brain/` with verbatim quotes, to save the caller's
   context. Its use is mandatory, not optional: the injected `CLAUDE.md`
@@ -194,4 +204,4 @@ default / `push`), read by both git hooks (ADR 0009).
 - [ADR 0001](./adr/0001-manifest-gated-sync-for-system-owned-files.md) —
   the previous SHA-256-manifest install strategy, **superseded by 0003**.
 
-*Last updated: 2026-08-28 — verified against commit `d4b05ca`.*
+*Last updated: 2026-09-04 — verified against commit `f33f197`.*

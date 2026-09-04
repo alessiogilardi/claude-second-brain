@@ -23,7 +23,12 @@ repo/
 │   ├── bootstrap.md                    # /second-brain:bootstrap -> bootstrap.sh
 │   └── refresh.md                      # /second-brain:refresh -> bootstrap.sh --refresh-system
 ├── skills/                         # plugin skills
-│   ├── update/SKILL.md                 # second-brain:update
+│   ├── update/
+│   │   ├── SKILL.md                    # second-brain:update (entry point)
+│   │   └── references/                 # on-demand depth, not loaded every run
+│   │       ├── writing-guides.md           # per-file guidance, editorial rules, footer edge cases
+│   │       └── gate-config.md              # exclusions, SB_GATE timing, bypasses
+│   ├── adr/SKILL.md                    # second-brain:adr — owns docs/second-brain/adr/
 │   └── onboard/SKILL.md                # second-brain:onboard
 ├── agents/
 │   └── second-brain-reader.md          # read-only docs/second-brain/ retrieval subagent
@@ -46,6 +51,13 @@ repo/
   auto-discovers them: `.claude-plugin/` (metadata), `skills/`, `agents/`,
   `hooks/` (Claude Code hooks only), `commands/`. Do not nest these under
   `.claude-plugin/` — only `plugin.json`/`marketplace.json` go there.
+- **A skill is a directory, not a file.** `SKILL.md` is the entry point;
+  anything conditional goes in a sibling `references/` directory and is
+  read only when the situation calls for it (ADR 0010). The whole
+  directory ships in the plugin cache, so a reference is addressed as
+  `${CLAUDE_PLUGIN_ROOT}/skills/<skill>/references/<file>.md`. Nothing
+  under `references/` may hold a trigger condition or a step of the main
+  procedure — if a run always needs it, it belongs in `SKILL.md`.
 - **`bootstrap/`** holds the deterministic scaffolder and its `payload/`.
   It is not a reserved plugin directory, so the plugin loader ignores it;
   the bootstrap reads its sources from `${CLAUDE_PLUGIN_ROOT}/bootstrap/…`
@@ -78,4 +90,4 @@ repo/
   repo's own `plugin.json` version-bump discipline and is never
   distributed to a destination project (see ADR 0005).
 
-*Last updated: 2026-08-20 — verified against commit `98b5062`.*
+*Last updated: 2026-09-04 — verified against commit `f33f197`.*

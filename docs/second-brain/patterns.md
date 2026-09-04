@@ -18,6 +18,7 @@
 | Plugin-carried runtime vs. bootstrapped repo files | skills/agent/Stop hook are served read-only from the plugin cache; `docs/second-brain/`, the `CLAUDE.md` block, the git pre-commit and pre-push hooks, and the CI workflow are committed into the destination working tree | A plugin cannot write the working tree; the committed files must survive fresh clones, non-installers, and CI. This boundary is the core of the design (ADR 0003). |
 | Dependency-free hooks | `hooks/session-reminder.sh`, `bootstrap/payload/git-pre-commit`, and `bootstrap/payload/git-pre-push` are bash + git only, plus POSIX `sed`/`tail` for the conf reader (no `uv`, Python, or `jq`) | The plugin needs only bash + git; it also tightens the ADR-0002 mirror to shell in all four files, so the shared default patterns are byte-identical strings everywhere. |
 | Nudge, don't enforce, at session start | `hooks/bootstrap-reminder.sh` (`SessionStart`, matcher `"startup"`) checks for the same `<!-- BEGIN SECOND BRAIN SYSTEM` marker `bootstrap.sh` checks, and prints a plain-stdout reminder if absent — it never runs the bootstrap itself | Claude Code has no plugin post-install lifecycle event, so a hook is the closest substitute; auto-writing into a repo's working tree on every session start would be surprising and contradicts the bootstrap's own create-only, non-destructive philosophy. See ADR 0004. |
+| Skills split by lifecycle phase, depth in `references/` | `skills/onboard/` (one-time bootstrap), `skills/update/` (ongoing status-doc sync), `skills/adr/` (decision records); `skills/update/references/{writing-guides,gate-config}.md` for conditional material | A skill's `description` is a trigger surface, and invoking one injects its whole `SKILL.md` into the caller's context — so splitting by *target file* would multiply competing triggers while loading several files per run. Splitting by *phase* keeps one unambiguous entry point per situation, and `references/` carries the depth that only some runs need. Cross-pointers between `update` and `adr` make either entry point recover a change that is both a state change and a decision. See ADR 0010. |
 | Semantic versioning + CI-enforced bump | `.claude-plugin/plugin.json`'s `version` (`MAJOR.MINOR.PATCH`: major = breaking for installed consumers, minor = new backward-compatible capability, patch = bug fix/no interface change); enforced by `.github/workflows/plugin-version.yml` whenever `hooks/`, `skills/`, `agents/`, `commands/`, or `bootstrap/` change (all of them ship in the plugin cache) | `/plugin marketplace update` refreshes an installed plugin's cache only when `version` changes, so a content-only change with no bump silently never propagates. There is no safe local hook slot for this check (`.claude/hooks/pre-commit` is payload-managed and gets clobbered by `--refresh-system`), so CI is the sole enforcement point; it can verify a bump happened, is well-formed, and increased, but not which tier is correct — see ADR 0005. |
 | Explicit anti-hand-edit wording at every friction point | The `[SECOND BRAIN SYSTEM] COMMIT REJECTED` message in `bootstrap/payload/git-pre-commit` (mirrored into `.claude/hooks/pre-commit`), the `[SECOND BRAIN SYSTEM] PUSH REJECTED` message in `bootstrap/payload/git-pre-push`, the Stop-hook `reason` in `hooks/session-reminder.sh`, the `::error::` line in `bootstrap/payload/workflows/second-brain.yml` (mirrored into `.github/workflows/second-brain.yml`), and the "Strict Commit Rule" section of `CLAUDE.md` / `bootstrap/payload/claude-md-block.md` all now say, in those words, not to hand-edit `docs/second-brain/` just to pass the check | The check is syntactic only (see "Four-way mirrored enforcement" above): it can't tell a real update from a token touch. Saying so once in `CLAUDE.md` isn't enough — a model racing to unblock a rejected commit/push reads the hook's own error text, not the project's `CLAUDE.md`, so the reminder has to live at the exact point of friction in all four enforcement surfaces plus the policy doc, worded identically enough to read as one rule. |
 
@@ -28,7 +29,10 @@
   the extensionless `pre-commit` and `pre-push` (git requires those exact
   names).
 - Skill directories: kebab-case matching the skill's `name:` frontmatter
-  field (`onboard`, `update`); the file inside is always `SKILL.md`.
+  field (`onboard`, `update`, `adr`); the entry point inside is always
+  `SKILL.md`, and conditional material sits in a sibling `references/`
+  directory as kebab-case `.md` files (`writing-guides.md`,
+  `gate-config.md`).
 - Slash commands: `commands/<name>.md`, kebab-case, with a `description`
   frontmatter field; the body runs the script via a leading `!`.
 - Don't repeat the plugin name (`second-brain`) inside a command or skill
@@ -48,7 +52,8 @@
   spell out the namespaced form, or the delegation silently falls through
   to the calling model's own session model instead of the agent's
   `model: haiku`.
-- ADR files: `NNNN-*.md`, zero-padded to 4 digits (see the
-  `second-brain:update` skill's "ADR numbering").
+- ADR files: `NNNN-*.md`, zero-padded to 4 digits, the summary naming the
+  decision rather than the problem (see the `second-brain:adr` skill's
+  "Numbering").
 
-*Last updated: 2026-08-28 — verified against commit `8e3279c`.*
+*Last updated: 2026-09-04 — verified against commit `f33f197`.*
