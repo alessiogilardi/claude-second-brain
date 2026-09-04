@@ -18,10 +18,12 @@ description: >
 This skill runs exactly once per project (the first time the Second
 Brain has real content to describe) and replaces the generic
 placeholders shipped by the template with the actual state of this
-codebase. It owns the *bootstrap* procedure only — the ongoing policy
-(memory routing, freshness footer format, ADR numbering, what not to
-write) is not repeated here; it lives in the `second-brain:update` skill
-and applies unchanged from the moment onboarding finishes.
+codebase. It owns the *bootstrap* procedure only — the ongoing policy is
+not repeated here. Memory routing and the freshness footer format live in
+the `second-brain:update` skill; how to write each file well lives in that
+skill's `references/writing-guides.md`; ADR numbering and proposal mode
+live in `second-brain:adr`. All of it applies unchanged from the moment
+onboarding finishes.
 
 ## When this skill is done
 
@@ -83,10 +85,9 @@ first real edit to a file this skill just wrote.
 5. **Update `docs/second-brain/README.md`'s navigation table** only if the set of
    files under `docs/second-brain/` changed (it shouldn't, during onboarding — the
    template already ships the full set).
-6. **Propose retroactive ADRs last, in proposal mode** (see
-   `second-brain:update`'s SKILL.md — same confirmation flow and
-   unattended fallback apply here): only for decisions still *visible in
-   the code today* (a chosen library, an established schema convention,
+6. **Propose retroactive ADRs last** by running `second-brain:adr` (its
+   proposal mode, numbering and unattended fallback apply here unchanged):
+   only for decisions still *visible in the code today* (a chosen library, an established schema convention,
    a deliberate trade-off you can point to). Don't reconstruct history
    that left no trace — an absent ADR is honest; a fabricated one isn't.
 7. **Resume the interrupted work, if any.** If this skill was reached
@@ -105,6 +106,7 @@ first real edit to a file this skill just wrote.
 - Don't carry over any of the template's instructional/example text
   (e.g. the `_Example_` glossary row, the `example_table` schema
   snippet) into the real file.
-- Don't duplicate `second-brain:update`'s policy here (memory routing
-  table, freshness footer format, ADR numbering scheme) — reference it
-  instead of restating it, so the two skills don't drift apart.
+- Don't duplicate the other skills' policy here (memory routing table and
+  freshness footer format from `second-brain:update`, ADR numbering from
+  `second-brain:adr`) — reference it instead of restating it, so the
+  skills don't drift apart.
